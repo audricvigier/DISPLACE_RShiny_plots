@@ -41,7 +41,10 @@ selvar <- function() {
     nms[-1]
 }
 
-
+selsumoverszgrp <- function(){
+    dd <- c(FALSE, TRUE)
+    dd
+}
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -54,7 +57,8 @@ ui <- fluidPage(
         sidebarPanel(
             selectInput("sel.sce", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE),
             selectInput("sel.var", "Select a variable", choices = selvar(), selected = "gradva", multiple = FALSE),
-            selectInput("sel.pop", "Select populations", choices = selpop(), selected = "pop.1", multiple = TRUE, selectize = FALSE)
+            selectInput("sel.pop", "Select populations", choices = selpop(), selected = "pop.1", multiple = TRUE, selectize = FALSE),
+            selectInput("sel.sum.szgroups", "Sum over size groups", choices = selsumoverszgrp(), selected = selsumoverszgrp()[1], multiple = FALSE, selectize = FALSE)
         ),
 
         # Show a plot of the generated distribution
@@ -105,7 +109,7 @@ server <- function(input, output) {
      output$linePlot3 <- renderPlot({
         plot_popdyn (sces=input$sel.sce,
                       explicit_pops= input$sel.pop,
-                      sum_all=FALSE
+                      sum_all=input$sel.sum.szgroups
                       ) 
      })
      

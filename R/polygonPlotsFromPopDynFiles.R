@@ -91,7 +91,7 @@ plot_popdyn <- function(sces=sces,
 
                   mat.sim2 <- replace(mat.sim2, is.na(mat.sim2), 0)
 
-                  ramp2 <- colorRamp(c("blue", "white"))
+                  ramp2 <- colorRamp(c("blue", "white"))  
                   rgb( ramp2(seq(0, 1, length = 5)), max = 255)
                    per_szgroup <- FALSE 
             
@@ -118,7 +118,9 @@ plot_popdyn <- function(sces=sces,
              
            } # end for pop
         
-  
+   legend("topleft", box.lty=0, legend=sces, fill= c(rgb( ramp1(seq(0, 1, length = 14)), max = 255, alpha=100)[1], rgb( ramp2(seq(0, 1, length = 14)), max = 255)[1]))
+   box()
+   
    return()
    }
 
