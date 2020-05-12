@@ -4,6 +4,9 @@ library(shiny)
 
 sces <- c("scebaseline", "scesizespectra")
 
+
+setwd("C:\\Users\\fbas\\Documents\\GitHub\\DISPLACE_RShiny_plots")
+
 # loglike outcomes
 for (sce in sces)
   load(paste0("data/lst_loglike_weight_agg_",sce,".RData"))
