@@ -82,8 +82,10 @@ ui <- dashboardPage(
 
 server <- function(input, output) {
   output$aveCumCatchPlot <- renderPlot({
-    scedir <- "data/CelticSea"
-    scenarios <- dir(scedir, "^sce[^_]*$")
+    scedir <- "output" ## "data/CelticSea"
+    scenarios <- dir(scedir, "^sce[^_]*")
+    m <- regexpr("sce[^_]*", scenarios)
+    scenarios <- unique(regmatches(scenarios, m))
     outdir <- "output"
 
     makeCumulativeMap(scedir, outdir = outdir, scenarios = scenarios,
@@ -135,4 +137,4 @@ server <- function(input, output) {
 }
 
 
-shinyApp(ui = ui, server = server, options = list(display.mode = "showcase"))
+shinyApp(ui = ui, server = server)
