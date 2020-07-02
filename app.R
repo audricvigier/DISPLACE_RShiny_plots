@@ -44,12 +44,13 @@ selsumoverszgrp <- function(){
 }
 
 selquantity <- function() {
-  tablefns <- dir("data/CelticSea/scebaseline/", pattern = "average")
+  tablefns <- dir("output", pattern = "average")
   matches <- regexpr(pattern = "[^_]*cum[^u._]+", tablefns)
   res <- unique(regmatches(tablefns, matches))
   cumul <- function(x) {sub("cum", "Cumulative ", x)}
   over <- function(x) paste(cumul(x[1]), cumul(x[2]), sep = " over ")
-  setNames(res, ifelse(grepl("over", res), sapply(strsplit(res, "over"), over), cumul(res) ))
+  res <- setNames(res, ifelse(grepl("over", res), sapply(strsplit(res, "over"), over), cumul(res) ))
+  res[!grepl("over", res)]
 }
 
 
