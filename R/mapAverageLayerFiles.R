@@ -3,8 +3,6 @@
 ##         Francois Bastardie (fba@aqua.dtu.dk)
 
 library(maptools)
-library(vmstools)
-data(ICESareas)
 
 ## Functions ----
 distance <- function (lon, lat, lonRef, latRef)  # vmstools::distance()
@@ -112,6 +110,9 @@ makeCumulativeMap <- function(scedir,
     if (file.exists(f)) {
       this <- readRDS(f)
     } else {
+      library(vmstools)
+      data(ICESareas)
+      
       ## Read in and preprocess the file (set small values to 0, add ICES areas, set to grid)
       this <- read.table(file=file.path(scedir, sce,
                                         paste("average_",a_type,"_layer",a_pop,".txt", sep='')), header=FALSE, skip = 1)
@@ -194,7 +195,11 @@ makeCumulativeMap <- function(scedir,
                         limits="", title=eval(a_title),
                         legend= the_breaks_leg,
                         cex=1, col="black")
-    } else { ## Not the baseline
+      # add closure polygons:
+        if (!is.null(gis_shape)) if(length(gis_shape[[sce]])>0) for (i in 1:length(gis_shape[[sce]])) plot(gis_shape[[sce]][[i]], add=TRUE,  border=grey(0.2), col=NA)
+        maps::map("mapdata::worldHires", add = TRUE, fill = TRUE, col = "darkgrey")
+  
+     } else { ## Not the baseline
       this <- aggregate(this[,nametype], list(this$round_long, this$round_lat, this$cell_id), sum, na.rm=TRUE)
       colnames(this) <- c("round_long", "round_lat", "cell_id", nametype)
 
