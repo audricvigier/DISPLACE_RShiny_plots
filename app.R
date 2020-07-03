@@ -1,87 +1,63 @@
 library(shiny)
 library(shinydashboard)
 
-source("R/mapAverageLayerFiles.R")
-sces <- c("scebaseline", "scesizespectra")
+## Source R scripts
+source("R/mapAverageLayerFiles.R", local = TRUE)
+source("R/polygonPlotsFromAggLoglikeFiles.R", local = TRUE)
+source("R/polygonPlotsFromPopDynFiles.R", local = TRUE)
+source("R/helperFunctions.R", local = TRUE)
 
-# loglike outcomes
-for (sce in sces)
-  load(paste0("data/lst_loglike_weight_agg_",sce,".RData"))
+sbox <- shinydashboard::box
 
-# poplike outcomes
-for (sce in sces)
-  load(paste0("data/lst_popdyn_",sce,".RData"))
+## Find available RData files and pick out scenarios
+loglikefns <- dir("data", "loglike.*RData", full.names = TRUE)
+loglikescenarios <- gsub("^.*agg_|[.]RData", "", loglikefns)
+popdynfns <- dir("data", "popdyn.*RData", full.names = TRUE)
+popdynscenarios <- gsub("^.*popdyn_|[.]RData", "", popdynfns)
 
+## Load all loglike and popdyn files
+for (f in c(loglikefns, popdynfns)) load(f, .GlobalEnv)
 
-source("R/polygonPlotsFromAggLoglikeFiles.R")
-source("R/polygonPlotsFromPopDynFiles.R")
-
-ym2date <- function(x) {
-  sapply(strsplit(x, "[.]"),
-         function(y) {
-           as.numeric(y[1]) + as.numeric(y[2]) / 12 - 1/12
-         })
-}
-
-selpop <- function() {
-  nms <- names(lst_loglike_agg_weight_all_scebaseline[[1]])
-  pops <- nms[startsWith(nms, "pop.")]
-  pops
-}
-
-selsce <- function() {
-  sces
-}
-
-selvar <- function() {
-  nms <- names(lst_loglike_agg_weight_all_scebaseline[[1]])
-  nms[-1]
-}
-
-selsumoverszgrp <- function(){
-  dd <- c(FALSE, TRUE)
-  dd
-}
-
-selquantity <- function() {
-  tablefns <- dir("output", pattern = "average")
-  matches <- regexpr(pattern = "[^_]*cum[^u._]+", tablefns)
-  res <- unique(regmatches(tablefns, matches))
-  cumul <- function(x) {sub("cum", "Cumulative ", x)}
-  over <- function(x) paste(cumul(x[1]), cumul(x[2]), sep = " over ")
-  res <- setNames(res, ifelse(grepl("over", res), sapply(strsplit(res, "over"), over), cumul(res) ))
-  res[!grepl("over", res)]
-}
-
-
+## User interface ----
 ui <- dashboardPage(
   dashboardHeader(title = "DISPLACE output viewer"),
   dashboardSidebar(
-    sidebarMenu(
-      menuItem("Maps", tabName = "map", icon = icon("map")),
-      selectInput("sel.mapquantity", "Select quantity", choices = selquantity(), multiple = FALSE, selectize = FALSE)#,
-      # selectInput("sel.sce", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE),
-      # selectInput("sel.var", "Select a variable", choices = selvar(), selected = "gradva", multiple = FALSE),
-      # selectInput("sel.pop", "Select populations", choices = selpop(), selected = "pop.1", multiple = TRUE, selectize = FALSE),
-      # selectInput("sel.sum.szgroups", "Sum over size groups", choices = selsumoverszgrp(), selected = selsumoverszgrp()[1],
-      #             multiple = FALSE, selectize = FALSE)
+    sidebarMenu( id="menu",
+                 menuItem("Maps", tabName = "map", icon = icon("map")),
+                 conditionalPanel(condition = "input.menu === 'map'",
+                                  selectInput("sel.mapquantity", "Select quantity", choices = selquantity(), multiple = FALSE, selectize = FALSE)),
+                 menuItem("Time series", tabName = "ts", icon = icon("chart-line")),
+                 conditionalPanel(condition = "input.menu === 'ts'",
+                                  selectInput("sel.sce", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE),
+                                  selectInput("sel.var", "Select a variable", choices = selvar(), selected = "gradva", multiple = FALSE),
+                                  selectInput("sel.pop", "Select populations", choices = selpop(), selected = "pop.1", multiple = TRUE, selectize = FALSE),
+                                  selectInput("sel.sum.szgroups", "Sum over size groups", choices = selsumoverszgrp(), selected = selsumoverszgrp()[1],
+                                              multiple = FALSE, selectize = FALSE)),
+                 menuItem("Box plots", tabName = "boxplots", icon = icon("chart-bar"))
+
+
     )),
 
   dashboardBody(
     tabItems(
       tabItem("map",
-              plotOutput("aveCumCatchPlot", height = "750px", width = "500px")#,
-              # plotOutput("linePlot"),
-              # plotOutput("linePlot2"),
-              # plotOutput("linePlot3")
-      )
+              plotOutput("cumulativeMap", height = "750px", width = "500px")
+      ),
+      tabItem("ts",
+              fluidRow(
+                sbox(width = 6, plotOutput("linePlot"), title = "Polygon plot", status = "primary", solidHeader = TRUE),
+                sbox(width = 6, plotOutput("linePlot2"), title = "Catch development over time", status = "primary", solidHeader = TRUE),
+                sbox(width = 6, plotOutput("linePlot3"))
+              )),
+      tabItem("boxplots")
     )
   )
 )
 
-
+## Server side logic ----
 server <- function(input, output) {
-  output$aveCumCatchPlot <- renderPlot({
+
+  output$cumulativeMap <- renderPlot({
     scedir <- "output" ## "data/CelticSea"
     scenarios <- dir(scedir, "^sce[^_]*")
     m <- regexpr("sce[^_]*", scenarios)
@@ -94,13 +70,13 @@ server <- function(input, output) {
   })
 
   output$linePlot <- renderPlot({
+    req(input$sel.var, input$sel.sce)
+    par(mar = c(4, 5, 0.5, 0.5))
     do_polygon_plot(
       a_variable = input$sel.var,
       nby = 5,
-      a_set_of_scenarios= c(
-        input$sel.sce),
-      the_scenario_names= c(
-        input$sel.sce) ,
+      a_set_of_scenarios=input$sel.sce,
+      the_scenario_names=input$sel.sce,
       name_set_of_sces= "setA",
       selected="_selected_set1_",
       export=FALSE,
@@ -116,14 +92,25 @@ server <- function(input, output) {
       a_height=1000
 
     )
-    title(main = "Polygon plot")
   })
 
   output$linePlot2 <- renderPlot({
+    par(mar=c(4,4,0.9,0.9))
     ym <- ym2date(lst_loglike_agg_weight_all_scebaseline[[1]]$year.month)
-    matplot(ym, lst_loglike_agg_weight_all_scebaseline[[1]][, names(lst_loglike_agg_weight_all_scebaseline[[1]]) %in% input$sel.pop],
-            type = "l", ylab = "Kg", xlab = "Year")
-    title(main = "Catch development over time")
+    selected <- lst_loglike_agg_weight_all_scebaseline[[1]][, names(lst_loglike_agg_weight_all_scebaseline[[1]]) %in% input$sel.pop, drop = FALSE] / 1000
+    maxima <- apply(selected, 2, max)
+    limits <- c(0, 10, 100, 1000, 100000)
+    lvls <- droplevels(cut(maxima, limits, include.lowest = TRUE, labels = limits[-1]))
+    switch(length(levels(lvls)),
+           "1" = par(mfrow = c(1,1)),
+           "2" = par(mfrow = c(2,1)),
+           "3" = par(mfrow = c(2,2)),
+           "4" = par(mfrow = c(2,2)))
+    for(i in levels(lvls)) {
+      matplot(ym, selected[, lvls == i],
+              type = "l", ylab = "tonnes", xlab = "Year")
+      mtext(paste0("< ", i, " tonnes"))
+    }
   })
 
 
