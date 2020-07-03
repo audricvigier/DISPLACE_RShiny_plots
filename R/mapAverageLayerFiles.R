@@ -194,6 +194,7 @@ makeCumulativeMap <- function(scedir,
                         limits="", title=eval(a_title),
                         legend= the_breaks_leg,
                         cex=1, col="black")
+      maps::map("mapdata::worldHires", add = TRUE, fill = TRUE, col = "darkgrey")
     } else { ## Not the baseline
       this <- aggregate(this[,nametype], list(this$round_long, this$round_lat, this$cell_id), sum, na.rm=TRUE)
       colnames(this) <- c("round_long", "round_lat", "cell_id", nametype)
@@ -267,7 +268,6 @@ makeCumulativeMap <- function(scedir,
 
         # add closure polygons:
         if (!is.null(gis_shape)) if(length(gis_shape[[sce]])>0) for (i in 1:length(gis_shape[[sce]])) plot(gis_shape[[sce]][[i]], add=TRUE,  border=grey(0.2), col=NA)
-        maps::map("mapdata::worldHires", add = TRUE, fill = TRUE, col = "darkgrey")
       }
     }
   }
