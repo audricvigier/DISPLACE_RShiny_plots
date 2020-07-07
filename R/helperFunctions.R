@@ -35,3 +35,8 @@ selquantity <- function() {
   res <- setNames(res, ifelse(grepl("over", res), sapply(strsplit(res, "over"), over), cumul(res) ))
   res[!grepl("over", res)]
 }
+
+warningPlot <- function(text = "No data", cex = 1.3, ...) {
+  plot(1, type="n", xlab="", ylab="", axes = FALSE)
+  text(1, 1, text, cex = cex, ...)
+}
