@@ -9,6 +9,19 @@ barplotTotLandingsPerSce <- function(general=general,
                                      a_width=3500, a_height=2000, black_and_white = FALSE, ylims = c(0,30)){
 
 
+  general <- list()
+
+  general$main.path         <- file.path("data/CelticSea44/")
+  # general$main.path.igraph  <- file.path("~","ibm_vessels","DISPLACE_input_raw", "igraph")
+  # general$main.path.param   <- file.path("~","ibm_vessels", paste("DISPLACE_input_",general$case_study, sep=""))
+  # general$main.path.ibm     <- file.path("~","ibm_vessels", paste("DISPLACE_input_", general$case_study, sep=''))
+  general$igraph            <- 3
+  general$a.year            <- "2015"
+  general$a.country         <- c("IRL", "BEL", "FRA", "GBR", "NLD")
+  general$nbpops            <- 28
+  general$nbszgroup         <- 14
+  general$namefolderinput   <- "CelticSea"
+  general$use_sqlite        <- FALSE
 
   c.listquote <- function (...)
   {
@@ -156,7 +169,7 @@ barplotTotLandingsPerSce <- function(general=general,
     loglike_last_tstep   <- loglike[loglike$year %in%  lasty ,]
     loglike_first_tstep  <- loglike[loglike$year %in%  firsty ,]
     ##pop_names            <-  read.table(file.path(general$main.path.ibm, paste("pop_names_", general$namefolderinput, ".txt", sep='')), header=TRUE)
-    pop_names <- paste0("pop.", pops) ## ALEX
+    pop_names <- paste0("pop.", selected_pops) ## ALEX
     if(count==1) group1               <-  as.character(pop_names[ pop_names[1] %in%   group1 ])
 
 
@@ -178,41 +191,24 @@ barplotTotLandingsPerSce <- function(general=general,
 
 
 
-  if(black_and_white){
-    # split into two groups...
-    levels(all_sces_first_y$a_pop) [levels(all_sces_first_y$a_pop) %in% group1] <- "GROUP1"
-    levels(all_sces_first_y$a_pop) [!levels(all_sces_first_y$a_pop) %in% c("GROUP1",group1)] <- "GROUP2"
 
-    levels(all_sces_last_y$a_pop) [levels(all_sces_last_y$a_pop) %in% group1] <- "GROUP1"
-    levels(all_sces_last_y$a_pop) [!levels(all_sces_last_y$a_pop) %in% c("GROUP1",group1)] <- "GROUP2"
+  # reorder stocks
+  all_sces_first_y$a_pop <- factor(all_sces_first_y$a_pop)
+  #species_order <- c(
+  #                 grep("nsea", all_sces_first_y$a_pop),
+  #                 grep("kask",  all_sces_first_y$a_pop ),
+  #                  grep("kat", all_sces_first_y$a_pop),
+  #                   grep("3a22", all_sces_first_y$a_pop ),
+  #                   grep("3a2223", all_sces_first_y$a_pop ),
+  #                   grep("2224", all_sces_first_y$a_pop),
+  #                    grep("2532",  all_sces_first_y$a_pop ),
+  #                     grep("2232", all_sces_first_y$a_pop )
+  #                     )
+  #species_order <- unique(species_order)
 
-    all_sces_first_y <- aggregate(all_sces_first_y[,-1], list(all_sces_first_y[,1]), sum)
-    colnames(all_sces_first_y)[1] <- "a_pop"
-    all_sces_last_y <- aggregate(all_sces_last_y[,-1], list(all_sces_last_y[,1]), sum)
-    colnames(all_sces_last_y)[1]  <- "a_pop"
+  #all_sces_first_y <- all_sces_first_y[rev(species_order),]
+  #all_sces_last_y <- all_sces_last_y[rev(species_order),]
 
-    # black and white version
-    some_colors <- c(grey(0.2),grey(0.5),grey(1))
-    the_density <- rep(500, length(some_colors))
-  } else{
-
-    # reorder stocks
-    all_sces_first_y$a_pop <- factor(all_sces_first_y$a_pop)
-    #species_order <- c(
-    #                 grep("nsea", all_sces_first_y$a_pop),
-    #                 grep("kask",  all_sces_first_y$a_pop ),
-    #                  grep("kat", all_sces_first_y$a_pop),
-    #                   grep("3a22", all_sces_first_y$a_pop ),
-    #                   grep("3a2223", all_sces_first_y$a_pop ),
-    #                   grep("2224", all_sces_first_y$a_pop),
-    #                    grep("2532",  all_sces_first_y$a_pop ),
-    #                     grep("2232", all_sces_first_y$a_pop )
-    #                     )
-    #species_order <- unique(species_order)
-
-    #all_sces_first_y <- all_sces_first_y[rev(species_order),]
-    #all_sces_last_y <- all_sces_last_y[rev(species_order),]
-  }
 
 
   #some_colors <- c("#a6cee3","#1f78b4","red","#b2df8a","green","#33a02c", "#fb9a99",grey(0.5),"#fdbf6f","#ff7f00","#cab2d6","#6a3d9a","#ffff99","#b15928", "black")
@@ -231,7 +227,6 @@ barplotTotLandingsPerSce <- function(general=general,
 
 
   ##-------A PLOT-----------
-  graphics.off()
   if(type_of_column=="pop") namefileplot <- paste("landings_per_stock_per_scenario", selected, sep='')
   if(type_of_column=="disc") namefileplot <- paste("discards_per_stock_per_scenario", selected, sep='')
 
@@ -274,4 +269,4 @@ barplotTotLandingsPerSce <- function(general=general,
   return()
 }
 
-barplotTotLandingsPerSce()
+

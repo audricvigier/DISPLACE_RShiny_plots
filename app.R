@@ -1,11 +1,13 @@
 library(shiny)
 library(shinydashboard)
+library(plotly)
 
 ## Source R scripts
 source("R/mapAverageLayerFiles.R", local = TRUE)
 source("R/polygonPlotsFromAggLoglikeFiles.R", local = TRUE)
 source("R/polygonPlotsFromPopDynFiles.R", local = TRUE)
 source("R/helperFunctions.R", local = TRUE)
+source("R/barplotLanDisPerScenario.R", local = TRUE)
 
 sbox <- shinydashboard::box
 
@@ -18,13 +20,7 @@ popdynscenarios <- gsub("^.*popdyn_|[.]RData", "", popdynfns)
 ## Load all loglike and popdyn files
 for (f in c(loglikefns, popdynfns)) load(f, envir = .GlobalEnv)
 
-jsCode <- 'shinyjs.hideSidebar = function(){
-  if (!$("#sidebarCollapsed").data("collapsed")) {
-    $("a.sidebar-toggle").trigger("click")
-  }
-}'
-
-convertMenuItem <- function(mi,tabName) {
+convertMenuItem <- function(tabName, mi) {
   mi$children[[1]]$attribs['data-toggle']="tab"
   mi$children[[1]]$attribs['data-value'] = tabName
   mi
@@ -34,74 +30,58 @@ convertMenuItem <- function(mi,tabName) {
 ui <- dashboardPage(
   dashboardHeader(title = "DISPLACE output viewer"),
   dashboardSidebar(
-    # sidebarMenu( id="menu",
-    #              menuItem("Maps", tabName = "map", icon = icon("map")),
-    #              menuSubItem(icon = NULL, tabName = "map",
-    #                          conditionalPanel(condition = "input.menu === 'map'",
-    #                                           selectInput("sel.mapquantity", "Select quantity",
-    #                                                       choices = selquantity(), multiple = FALSE, selectize = FALSE))),
-    #              menuItem("Time series", tabName = "ts", icon = icon("chart-line")),
-    #              menuSubItem(icon = NULL, tabName = "ts",
-    #                          conditionalPanel(condition = "input.menu === 'ts'",
-    #                                           selectInput("sel.sce", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE),
-    #                                           selectInput("sel.var", "Select a variable", choices = selvar(), selected = "gradva", multiple = FALSE),
-    #                                           selectInput("sel.pop", "Select populations", choices = selpop(), selected = "pop.1", multiple = TRUE, selectize = FALSE),
-    #                                           selectInput("sel.sum.szgroups", "Sum over size groups", choices = selsumoverszgrp(), selected = selsumoverszgrp()[1],
-    #                                                       multiple = FALSE, selectize = FALSE))),
-    #              menuItem("Box plots", tabName = "boxplots", icon = icon("chart-bar")),
-    #              menuSubItem(icon = NULL, tabName = "boxplots",
-    #                          conditionalPanel(condition = "input.menu === 'boxplots'",
-    #                                           selectInput("sel.sce2", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE)
-    #                          )))
     sidebarMenu(
       sidebarMenu(id = "menu",
-                  convertMenuItem(menuItem("Maps", tabName = "map", icon = icon("map"), startExpanded = TRUE,
-                                           selectInput("sel.mapquantity", "Select quantity", choices = selquantity(), multiple = FALSE, selectize = FALSE)), "map"),
-                  convertMenuItem(menuItem("Time series", tabName = "ts", icon = icon("chart-line"),
+                  convertMenuItem("map",
+                                  menuItem("Maps", tabName = "map", icon = icon("map"), startExpanded = TRUE,
+                                           selectInput("sel.mapquantity", "Select quantity", choices = selquantity(), multiple = FALSE, selectize = FALSE))),
+                  convertMenuItem("ts",
+                                  menuItem("Time series", tabName = "ts", icon = icon("chart-line"),
                                            selectInput("sel.sce", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE),
                                            selectInput("sel.var", "Select a variable", choices = selvar(), selected = "gradva", multiple = FALSE),
                                            selectInput("sel.pop", "Select populations", choices = selpop(), selected = "pop.1", multiple = TRUE, selectize = FALSE),
                                            selectInput("sel.sum.szgroups", "Sum over size groups", choices = selsumoverszgrp(), selected = selsumoverszgrp()[1],
-                                                       multiple = FALSE, selectize = FALSE)
-                  ), "ts"),
-      convertMenuItem(menuItem("Boxplots", tabName = "boxplots", icon = icon("chart-bar"),
-                               selectInput("sel.sce2", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE)), "boxplots")
+                                                       multiple = FALSE, selectize = FALSE))),
+                  convertMenuItem("tab_landis_perpop",
+                                  menuItem("Landings/dicards per population", tabName = "tab_landis_perpop", icon = icon("chart-bar"),
+                                           selectInput("sel.sce2", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE))),
+                  convertMenuItem("tab_plotlymap",
+                                  menuItem("Plotly map", tabName = "tab_plotlymap", icon = icon("chart-bar"), selected = TRUE,
+                                           selectInput("sel.sce2", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE)))
+      )
+    )
+  ),
+  dashboardBody(
+    tabItems(
+      tabItem("map",
+              plotOutput("cumulativeMap", height = "750px", width = "500px")
+      ),
+      tabItem("ts",
+              fluidRow(
+                sbox(width = 6, plotOutput("linePlot"), title = "Polygon plot", status = "primary", solidHeader = TRUE),
+                sbox(width = 6, plotOutput("linePlot2"), title = "Catch development over time", status = "primary", solidHeader = TRUE),
+                sbox(width = 6, plotOutput("linePlot3"), title = "", status = "primary", solidHeader = TRUE)
+              )),
+      tabItem("tab_landis_perpop",
+              plotOutput("barplot_landis_perpop")),
+      tabItem("tab_plotlymap",
+              plotlyOutput("cumulativeMaps"))
     )
   )
-),
-dashboardBody(
-  shinyjs::useShinyjs(),
-  shinyjs::extendShinyjs(text = jsCode, functions = c("hideSidebar")),
-  tabItems(
-    tabItem("map",
-            plotOutput("cumulativeMap", height = "750px", width = "500px")
-    ),
-    tabItem("ts",
-            fluidRow(
-              sbox(width = 6, plotOutput("linePlot"), title = "Polygon plot", status = "primary", solidHeader = TRUE),
-              sbox(width = 6, plotOutput("linePlot2"), title = "Catch development over time", status = "primary", solidHeader = TRUE),
-              sbox(width = 6, plotOutput("linePlot3"), title = "", status = "primary", solidHeader = TRUE)
-            )),
-    tabItem("boxplots",
-            plotOutput("boxplot"))
-  )
-)
 )
 
 ## Server side logic ----
 server <- function(input, output) {
   output$cumulativeMap <- renderPlot({
-    warningPlot("ddd")
-    if(F) {
-      scedir <- "output" ## "data/CelticSea"
-      scenarios <- dir(scedir, "^sce[^_]*")
-      m <- regexpr("sce[^_]*", scenarios)
-      scenarios <- unique(regmatches(scenarios, m))
-      outdir <- "output"
+    scedir <- "data/CelticSea44/"
+    scenarios <- dir(scedir, "^sce[^_]*")
+    m <- regexpr("sce[^_]*", scenarios)
+    scenarios <- unique(regmatches(scenarios, m))
+    outdir <- "output"
 
-      makeCumulativeMap(scedir, outdir = outdir, scenarios = scenarios,
-                        a_type = input$sel.mapquantity, in_relative = FALSE)
-    }
+    makeCumulativeMap(scedir = scedir, outdir = outdir, scenarios = scenarios,
+                      a_type = input$sel.mapquantity, in_relative = FALSE)
+
   })
 
   output$linePlot <- renderPlot({
@@ -167,15 +147,14 @@ server <- function(input, output) {
       ) }
   })
 
-  output$boxplot <- renderPlot({
-    warningPlot("Not implemented yet")
-  })
-  observeEvent(input$tabs, {
-    if (input$tabs == "B") {
-      shinyjs::js$hideSidebar()
-    }
+  output$barplot_landis_perpop <- renderPlot({
+    #warningPlot("Not implemented yet")
+    barplotTotLandingsPerSce(selected_scenarios = input$sel.sce2, scenarios_names = input$sel.sce2)
   })
 
+  output$cumulativeMaps <- renderPlotly({
+
+  })
 }
 
 

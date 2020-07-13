@@ -99,7 +99,7 @@ makeCumulativeMap <- function(scedir,
   m <- if (length(selected_scenarios_for_plot) %% 2 == 0) {
     matrix(seq(selected_scenarios_for_plot), ncol = 2)
   } else {
-    matrix(c(rep(1, 4), seq(2, selected_scenarios_for_plot)), ncol = 2, byrow = TRUE)
+    matrix(c(rep(1, 4), seq(2, length(selected_scenarios_for_plot))), ncol = 2, byrow = TRUE)
   }
 
   layout(m)
