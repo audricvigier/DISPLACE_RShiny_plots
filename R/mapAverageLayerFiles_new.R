@@ -3,58 +3,15 @@
 ##         Francois Bastardie (fba@aqua.dtu.dk)
 
 library(maptools)
+library(vmstools)
+data(ICESareas)
 
 ## Functions ----
-distance <- function (lon, lat, lonRef, latRef)  # vmstools::distance()
-{
-  pd <- pi/180
-  a1 <- sin(((latRef - lat) * pd)/2)
-  a2 <- cos(lat * pd)
-  a3 <- cos(latRef * pd)
-  a4 <- sin(((lonRef - lon) * pd)/2)
-  a <- a1 * a1 + a2 * a3 * a4 * a4
-  c <- 2 * atan2(sqrt(a), sqrt(1 - a))
-  return(6371 * c)
-}
-
-legend.gradient2 <-
-  function (pnts, cols = heat.colors(100), limits = c(0, 1), title = "Legend", legend="",
-            ...)
-  {
-    pnts = try(as.matrix(pnts), silent = T)
-    if (!is.matrix(pnts))
-      stop("you must have a 4x2 matrix")
-    if (dim(pnts)[1] != 4 || dim(pnts)[2] != 2)
-      stop("Matrix must have dimensions of 4 rows and 2 columms")
-    if (length(cols) < 2)
-      stop("You must have 2 or more colors")
-    yvals = seq(min(pnts[, 2]), max(pnts[, 2]), length = length(cols) +
-                  1)
-    for (i in 1:length(cols)) {
-      polygon(x = pnts[, 1], y = c(yvals[i], yvals[i], yvals[i +
-                                                               1], yvals[i + 1]), col = cols[i], border = F)
-    }
-    text(max(pnts[, 1]), min(pnts[, 2]), labels = limits[1],
-         pos = 4, ...)
-    text(max(pnts[, 1]), max(pnts[, 2]), labels = limits[2],
-         pos = 4, ...)
-    start_pos <- (min(pnts[, 2])+((max(pnts[, 2])-min(pnts[, 2]))/length(legend))/2)
-    for (i in 1: length(legend)){
-      text(max(pnts[, 1])-0, start_pos + ((i-1) * ((max(pnts[, 2])-min(pnts[, 2]))/length(legend)) ), labels = legend[i],
-           pos = 4, ...)
-      #browser()
-    }
-    text(min(pnts[, 1])-0.1, max(pnts[, 2])-0, labels = title, adj = c(0,
-                                                                       -1), ...)
-  }
-
-Satellite.Palette.baseline <- colorRampPalette(c("cyan","aquamarine","orange","red"))
-
 makeCumulativeMap <- function(scedir,
                               outdir,
                               scenarios = dir(scedir, "^sce[^_]*$"),
                               a_type="cumcatches",
-                              in_relative=TRUE,
+                              in_relative=FALSE,
                               the_baseline= "scebaseline") {
   ## Add any of those needed as arguments to the function
   a_type2=""
@@ -74,7 +31,7 @@ makeCumulativeMap <- function(scedir,
   ylims = c(48, 55);
   xcell=12; ycell=17
   legend_text1="Total Catches kg per "
-
+  nametype <- if(a_type2!="") paste0(a_type, a_pop,"over",a_type2) else paste0(a_type, a_pop)
   ## Create outdir if it does not exist
   if (!dir.exists(outdir)) dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
 
@@ -82,16 +39,6 @@ makeCumulativeMap <- function(scedir,
   selected_scenarios_for_table <- unique(c(the_baseline, selected_scenarios_for_table))
   selected_scenarios_for_plot <- unique(c(the_baseline, selected_scenarios_for_plot))
   namesce <- unique(c(the_baseline, namesce))
-
-  ## Output table
-  table_obj <- matrix(0, nrow=length(selected_scenarios_for_table), ncol=length(selected_areas_for_table)+1)
-  rownames(table_obj) <- c(selected_scenarios_for_table)
-  colnames(table_obj) <- c(selected_areas_for_table, "Other")
-
-  ## Output filenames
-  nametype <- if(a_type2!="") paste0(a_type, a_pop,"over",a_type2) else paste0(a_type, a_pop)
-  fn_tiff <- file.path(outdir, paste0("map_averaged_", nametype, "_selected_in_relative", in_relative, ".tiff"))
-  fn_table <- file.path(outdir, paste0("table_", nametype,".txt"))
 
   ## Plot layout and plotting parameters
   m <- if (length(selected_scenarios_for_plot) %% 2 == 0) {
@@ -101,8 +48,7 @@ makeCumulativeMap <- function(scedir,
   }
 
   layout(m)
-  par(mar=c(2,2,3,1))
-  par(oma=c(4,4,1,1))
+  par(mar=c(2,2,3,1), oma=c(4,4,1,1))
 
   for (i in seq(selected_scenarios_for_table)) {
     sce <- selected_scenarios_for_table[i]
@@ -110,9 +56,6 @@ makeCumulativeMap <- function(scedir,
     if (file.exists(f)) {
       this <- readRDS(f)
     } else {
-      library(vmstools)
-      data(ICESareas)
-
       ## Read in and preprocess the file (set small values to 0, add ICES areas, set to grid)
       this <- read.table(file=file.path(scedir, sce,
                                         paste("average_",a_type,"_layer",a_pop,".txt", sep='')), header=FALSE, skip = 1)
@@ -195,10 +138,8 @@ makeCumulativeMap <- function(scedir,
                         limits="", title=eval(a_title),
                         legend= the_breaks_leg,
                         cex=1, col="black")
-
-      maps::map("mapdata::worldHires", add = TRUE, fill = TRUE, col = "darkgrey")
+      maps::map("maps::world", add = TRUE, fill = TRUE, col = "darkgrey")
     } else { ## Not the baseline
-
       this <- aggregate(this[,nametype], list(this$round_long, this$round_lat, this$cell_id), sum, na.rm=TRUE)
       colnames(this) <- c("round_long", "round_lat", "cell_id", nametype)
 
@@ -215,7 +156,7 @@ makeCumulativeMap <- function(scedir,
 
       # CAUTION!!!!: correct for area with low absolute value to avoid visual effect
       xcol <- paste0(nametype,".x")
-      this[,nametype] [ this[, xcol] <quantile(this[, xcol] [ this[, xcol] !=0], prob=0.05)]  <- 0
+      this[,nametype] [ this[, xcol] <quantile(this[, xcol] [ this[, xcol] !=0], prob=0.05, na.rm = TRUE)]  <- 0
 
 
       if(in_relative){
@@ -249,7 +190,7 @@ makeCumulativeMap <- function(scedir,
           if(length(gis_shape[[sce]])>0)
             for (i in 1:length(gis_shape[[the_baseline]]))
               plot(gis_shape[[the_baseline]][[i]], add=TRUE, col=grey(0.8), border=FALSE)
-        maps::map("mapdata::worldHires", add = TRUE, fill = TRUE, col = "darkgrey")
+        maps::map("maps::world", add = TRUE, fill = TRUE, col = "darkgrey")
 
         graphics::box()
         mtext(side=3, namesce[i], cex=1.2, line=0.5)
