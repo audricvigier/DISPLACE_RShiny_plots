@@ -18,10 +18,8 @@ distance <- function (lon, lat, lonRef, latRef)  # vmstools::distance()
 }
 
 legend.gradient2 <-
-  function (pnts, cols = heat.colors(100), limits = c(0, 1), title = "Legend", legend="",
-            ...)
-  {
-    pnts = try(as.matrix(pnts), silent = T)
+  function(pnts, cols = heat.colors(100), limits = c(0, 1), title = "Legend", legend = "", ...) {
+    pnts = try(as.matrix(pnts), silent = TRUE)
     if (!is.matrix(pnts))
       stop("you must have a 4x2 matrix")
     if (dim(pnts)[1] != 4 || dim(pnts)[2] != 2)
@@ -39,13 +37,11 @@ legend.gradient2 <-
     text(max(pnts[, 1]), max(pnts[, 2]), labels = limits[2],
          pos = 4, ...)
     start_pos <- (min(pnts[, 2])+((max(pnts[, 2])-min(pnts[, 2]))/length(legend))/2)
-    for (i in 1: length(legend)){
-      text(max(pnts[, 1])-0, start_pos + ((i-1) * ((max(pnts[, 2])-min(pnts[, 2]))/length(legend)) ), labels = legend[i],
-           pos = 4, ...)
-      #browser()
+    for (i in seq_along(legend)) {
+      text(max(pnts[, 1]), start_pos + ((i - 1) * ((max(pnts[, 2]) - min(pnts[, 2])) / length(legend)) ),
+           labels = legend[i], pos = 4, ...)
     }
-    text(min(pnts[, 1])-0.1, max(pnts[, 2])-0, labels = title, adj = c(0,
-                                                                       -1), ...)
+    text(min(pnts[, 1]) - 0.05, max(pnts[, 2]), labels = title, adj = c(0, -1), ...)
   }
 
 Satellite.Palette.baseline <- colorRampPalette(c("cyan","aquamarine","orange","red"))
@@ -57,23 +53,23 @@ makeCumulativeMap <- function(scedir,
                               in_relative=TRUE,
                               the_baseline= "scebaseline") {
   ## Add any of those needed as arguments to the function
-  a_type2=""
-  func="ratio"    # or func="rate";
-  field_pos=4
-  a_pop=""
-  selected_scenarios_for_plot=scenarios
-  selected_scenarios_for_table=scenarios
-  namesce=scenarios ## Add names here
-  selected_areas_for_table=c("7.g", "7.h")
-  the_breaks_baseline= c(0.5, 1, round(exp(seq(0.5, 14, by=1.2))), 1000000)
-  the_breaks=c(rev(-round(exp(seq(0, 7, by=1)))),  0, round(exp(seq(0, 7, by=1))))
-  gis_shape=list()
+  a_type2 = ""
+  func = "ratio"    # or func="rate";
+  field_pos = 4
+  a_pop = ""
+  selected_scenarios_for_plot = scenarios
+  selected_scenarios_for_table = scenarios
+  namesce = scenarios ## Add names here
+  selected_areas_for_table = c("7.g", "7.h")
+  the_breaks_baseline = c(0.5, 1, round(exp(seq(0.5, 14, by = 4.5))))
+  the_breaks = c(rev(-round(exp(seq(0, 7, by = 1)))),  0, round(exp(seq(0, 7, by = 1))))
+  gis_shape = list()
   a_width = 3400
-  a_height= 3500
+  a_height = 3500
   xlims = c(-12, -5);
   ylims = c(48, 55);
-  xcell=12; ycell=17
-  legend_text1="Total Catches kg per "
+  xcell = 12; ycell = 17
+  legend_text1 = "Total Catches kg per "
 
   ## Create outdir if it does not exist
   if (!dir.exists(outdir)) dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
@@ -95,7 +91,7 @@ makeCumulativeMap <- function(scedir,
 
   ## Plot layout and plotting parameters
   m <- if (length(selected_scenarios_for_plot) %% 2 == 0) {
-    matrix(seq(selected_scenarios_for_plot), ncol = 2)
+    matrix(seq(selected_scenarios_for_plot), ncol = 4)
   } else {
     matrix(c(rep(1, 4), seq(2, length(selected_scenarios_for_plot))), ncol = 2, byrow = TRUE)
   }
@@ -153,12 +149,12 @@ makeCumulativeMap <- function(scedir,
 
 
       maxbr <- tail(the_breaks_baseline, 1)
-      the_baseline_layer[,nametype] <- replace (the_baseline_layer[,nametype],
-                                                the_baseline_layer[,nametype]>maxbr,
-                                                the_breaks_baseline[length(the_breaks_baseline)])
+      the_baseline_layer[, nametype] <- replace (the_baseline_layer[, nametype],
+                                                the_baseline_layer[, nametype] > maxbr,
+                                                maxbr)
 
       the_points <- tapply(the_baseline_layer[,nametype],
-                           list(the_baseline_layer$round_lat, the_baseline_layer$round_long), sum, na.rm=TRUE)
+                           list(the_baseline_layer$round_lat, the_baseline_layer$round_long), sum, na.rm = TRUE)
 
       #the_points <- replace (the_points, the_points>the_breaks_baseline[length(the_breaks_baseline)], the_breaks_baseline[length(the_breaks_baseline)])
 
@@ -180,21 +176,27 @@ makeCumulativeMap <- function(scedir,
             plot(gis_shape[[the_baseline]][[i]], add=TRUE, col=grey(0.8), border=TRUE)
 
       graphics::box()
-      mtext(side=3, namesce[i], cex=1.2, line=0.5)
-      axis(1, cex.axis=1.2)
-      axis(2, las=2, cex.axis=1.2)
+      mtext(side=3, sub("sce", "Scenario: ", namesce[i]), cex = 1.2, line = 0.5)
+      axis(1, cex.axis = 1.2)
+      axis(2, las = 2, cex.axis = 1.2)
 
 
-      x = c(xlims[1]+0.2, xlims[1]+0.4, xlims[1]+0.4, xlims[1]+0.2)
-      y = c(ylims[1]+0.5, ylims[1]+3, ylims[1]+3, ylims[1]+0.5)
-      the_breaks_leg <-NULL
-      a_title <- substitute( expression(paste(legend_text1, km^2)), list(legend_text1=legend_text1))
-      if(func=="rate") a_title <- legend_text1  # overwrite
-      for(i in 1: length(the_breaks_baseline[-1])){ if(the_breaks_baseline[i]>1) {the_breaks_leg[i] <- round(the_breaks_baseline[i])} else{the_breaks_leg[i]<- the_breaks_baseline[i]}}
-      legend.gradient2 (cbind(x = x , y = y ), cols=Satellite.Palette.baseline(length(the_breaks_baseline[-1])),
-                        limits="", title=eval(a_title),
-                        legend= the_breaks_leg,
-                        cex=1, col="black")
+      x = c(xlims[1] + 0.2, xlims[1] + 0.4, xlims[1] + 0.4, xlims[1] + 0.2)
+      y = c(ylims[1] + 0.5, ylims[1] + 3, ylims[1] + 3, ylims[1] + 0.5)
+      the_breaks_leg <- NULL
+      a_title <- substitute( expression(paste(legend_text1, km^2)), list(legend_text1 = legend_text1))
+      if (func == "rate") a_title <- legend_text1  # overwrite
+      for (i in 1:length(the_breaks_baseline)) {
+        if (the_breaks_baseline[i] > 1) {
+          the_breaks_leg[i] <- round(the_breaks_baseline[i])
+        } else{
+          the_breaks_leg[i] <- the_breaks_baseline[i]
+        }
+      }
+      legend.gradient2(cbind(x = x , y = y ), cols=Satellite.Palette.baseline(length(the_breaks_baseline[-1])),
+                       limits = "", title = eval(a_title),
+                       legend = the_breaks_leg,
+                       cex = 1, col = "black")
 
       maps::map("mapdata::worldHires", add = TRUE, fill = TRUE, col = "darkgrey")
     } else { ## Not the baseline
@@ -210,7 +212,7 @@ makeCumulativeMap <- function(scedir,
       this[,paste0(nametype,".y")] <- replace(this[,paste0(nametype,".y")], this[,paste0(nametype,".y")]<1e-1, 0)
 
       # percent
-      this[,nametype]  <- (100* as.numeric(as.character(this[,paste0(nametype,".y")])) / as.numeric(as.character(this[,paste0(nametype,".x")])) )  -100
+      this[,nametype]  <- (100 * as.numeric(as.character(this[,paste0(nametype,".y")])) / as.numeric(as.character(this[,paste0(nametype,".x")])) )  -100
 
 
       # CAUTION!!!!: correct for area with low absolute value to avoid visual effect
@@ -232,7 +234,7 @@ makeCumulativeMap <- function(scedir,
       maxbr <- the_breaks[length(the_breaks)]
       the_points[the_points > maxbr] <- maxbr
 
-      if(sce %in% selected_scenarios_for_plot){
+      if (sce %in% selected_scenarios_for_plot){
         image(
           x=as.numeric(as.character(colnames(the_points)))/xcell,   #15
           y=as.numeric(as.character(rownames(the_points)))/ycell,   # 20
@@ -246,21 +248,21 @@ makeCumulativeMap <- function(scedir,
           xlim=xlims, ylim=ylims
         )
         if (!is.null(gis_shape))
-          if(length(gis_shape[[sce]])>0)
+          if (length(gis_shape[[sce]])>0)
             for (i in 1:length(gis_shape[[the_baseline]]))
               plot(gis_shape[[the_baseline]][[i]], add=TRUE, col=grey(0.8), border=FALSE)
         maps::map("mapdata::worldHires", add = TRUE, fill = TRUE, col = "darkgrey")
 
         graphics::box()
-        mtext(side=3, namesce[i], cex=1.2, line=0.5)
+        mtext(side=3, sub("sce", "Scenario: ", namesce[i]), cex=1.2, line=0.5)
         axis(1, cex.axis=1.2)
         axis(2, las=2, cex.axis=1.2)
 
         x = c(xlims[1]+0.2, xlims[1]+0.4, xlims[1]+0.4, xlims[1]+0.2)
         y = c(ylims[1]+0.5, ylims[1]+3, ylims[1]+3, ylims[1]+0.5)
-        if(in_relative) a_title_leg <- substitute( expression(paste("% difference per cell")))
-        if(!in_relative) a_title_leg <- substitute( expression(paste(legend_text1, km^2)), list(legend_text1=legend_text1))
-        the_breaks_leg <-NULL
+        if (in_relative) a_title_leg <- substitute( expression(paste("% difference per cell")))
+        if (!in_relative) a_title_leg <- substitute( expression(paste(legend_text1, km^2)), list(legend_text1 = legend_text1))
+        the_breaks_leg <- NULL
         #for(i in 1: length(the_breaks[-1])){ if(the_breaks[i]>1) {the_breaks_leg[i] <- round(the_breaks[i])} else{the_breaks_leg[i]<- the_breaks[i]}}
         the_breaks_leg <- the_breaks
         legend.gradient2 (cbind(x = x , y = y ), cols=Satellite.Palette(length(the_breaks[-1])),

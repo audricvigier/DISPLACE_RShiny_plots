@@ -1966,13 +1966,13 @@ if(FALSE){
 
 
         
-              
+             
               
 compare_sim_sim_landings <- function (lst_loglike_agg_1, lst_loglike_agg_2, ...,  plot_obs=TRUE, 
                                        idx.sim=list(sce1=c(1), sce2=c(1)), combined_name=c("baseline_vs_implicit"), 
                                          a.comment="", what="per_vessel", what2="weight", count=0,
                                           a.xlab="", a.ylab="", a.unit=1, do_mtext=FALSE)  {  
-     
+      
      lstargs <- list(...)
   
   

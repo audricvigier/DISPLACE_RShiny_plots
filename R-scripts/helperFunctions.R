@@ -8,7 +8,10 @@ ym2date <- function(x) {
 selpop <- function() {
   nms <- names(lst_loglike_agg_weight_all_scebaseline[[1]])
   pops <- nms[startsWith(nms, "pop.")]
-  pops
+  if (length(pops) == length(popnames$spp)) {
+    names(pops) <- popnames$spp
+  }
+  pops[order(names(pops)) ]
 }
 
 selsce <- function() {
