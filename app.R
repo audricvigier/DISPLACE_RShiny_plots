@@ -1,13 +1,15 @@
 library(shiny)
 library(shinydashboard)
 library(plotly)
+shinyOptions(shiny.autoreload = TRUE)
+shinyOptions(shiny.launch.browser = TRUE)
 
 ## Source R scripts
-source("R/mapAverageLayerFiles.R", local = TRUE)
-source("R/polygonPlotsFromAggLoglikeFiles.R", local = TRUE)
-source("R/polygonPlotsFromPopDynFiles.R", local = TRUE)
-source("R/helperFunctions.R", local = TRUE)
-source("R/barplotLanDisPerScenario.R", local = TRUE)
+source("R-scripts/mapAverageLayerFiles.R", local = TRUE)
+source("R-scripts/polygonPlotsFromAggLoglikeFiles.R", local = TRUE)
+source("R-scripts/polygonPlotsFromPopDynFiles.R", local = TRUE)
+source("R-scripts/helperFunctions.R", local = TRUE)
+source("R-scripts/barplotLanDisPerScenario.R", local = TRUE)
 
 sbox <- shinydashboard::box
 
@@ -20,8 +22,12 @@ popdynscenarios <- gsub("^.*popdyn_|[.]RData", "", popdynfns)
 ## Load all loglike and popdyn files
 for (f in c(loglikefns, popdynfns)) load(f, envir = .GlobalEnv)
 
+## Read population names
+## popnames <- read.table("data/CelticSea44/pop_names_CelticSea.txt", header = TRUE); save("popnames", file = "data/popnames.Rdata")
+load(file = "data/popnames.Rdata")
+
 convertMenuItem <- function(tabName, mi) {
-  mi$children[[1]]$attribs['data-toggle']="tab"
+  mi$children[[1]]$attribs['data-toggle'] = "tab"
   mi$children[[1]]$attribs['data-value'] = tabName
   mi
 }
@@ -32,15 +38,17 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       sidebarMenu(id = "menu",
+                  convertMenuItem("intro",
+                                  menuItem("Model info", tabName = "intro", icon = icon("info"), startExpanded = TRUE)),
                   convertMenuItem("map",
-                                  menuItem("Maps", tabName = "map", icon = icon("map"), startExpanded = TRUE,
+                                  menuItem("Maps", tabName = "map", icon = icon("map"),
                                            selectInput("sel.mapquantity", "Select quantity", choices = selquantity(), multiple = FALSE, selectize = FALSE))),
                   convertMenuItem("ts",
                                   menuItem("Time series", tabName = "ts", icon = icon("chart-line"),
                                            selectInput("sel.sce", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE),
                                            selectInput("sel.var", "Select a variable", choices = selvar(), selected = "gradva", multiple = FALSE),
-                                           selectInput("sel.pop", "Select populations", choices = selpop(), selected = "pop.1", multiple = TRUE, selectize = FALSE),
-                                           selectInput("sel.sum.szgroups", "Sum over size groups", choices = selsumoverszgrp(), selected = selsumoverszgrp()[1],
+                                           selectInput("sel.pop", "Select populations", choices = selpop(), selected = "pop.2", multiple = TRUE, selectize = FALSE),
+                                           selectInput("sel.sum.szgroups", "Sum over size groups", choices = c(TRUE, FALSE), selected = TRUE,
                                                        multiple = FALSE, selectize = FALSE))),
                   convertMenuItem("tab_landis_perpop",
                                   menuItem("Landings/dicards per population", tabName = "tab_landis_perpop", icon = icon("chart-bar"),
@@ -53,12 +61,24 @@ ui <- dashboardPage(
   ),
   dashboardBody(
     tabItems(
+      tabItem("intro",
+              h2("DISPLACE model for the Irish demersal Celtic Sea fisheries"),
+              sbox(width = 12, title = "Background", status = "primary", solidHeader = FALSE, collapsible = FALSE,
+                   div("Little info about the aim of the DISPLACE model.")),
+              sbox(width = 6, title = "Conditioning fisheries", status = "primary", solidHeader = TRUE, collapsible = TRUE,
+                   div("Fishing vessels of the Irish demersal fishing fleet are considered (DAFM, 2017; EC, 2017). "), collapsed = TRUE),
+              sbox(width = 6, title = "Study area", status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
+                   div(img(src = "studyAreaMap.png"))),
+              sbox(width = 6, title = "Species", status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
+                   div(tableOutput("speciesTable"))),
+              sbox(width = 6, title = "Gear categories", status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
+                   div(tableOutput("gearTable")))),
       tabItem("map",
-              plotOutput("cumulativeMap", height = "750px", width = "500px")
+              plotOutput("cumulativeMap", height = "750px", width = "1024px")
       ),
       tabItem("ts",
               fluidRow(
-                sbox(width = 6, plotOutput("linePlot"), title = "Polygon plot", status = "primary", solidHeader = TRUE),
+                sbox(width = 6, plotOutput("linePlot"), title = "", status = "primary", solidHeader = TRUE),
                 sbox(width = 6, plotOutput("linePlot2"), title = "Catch development over time", status = "primary", solidHeader = TRUE),
                 sbox(width = 6, plotOutput("linePlot3"), title = "", status = "primary", solidHeader = TRUE)
               )),
@@ -72,6 +92,15 @@ ui <- dashboardPage(
 
 ## Server side logic ----
 server <- function(input, output) {
+  output$speciesTable <- renderTable(read.csv("data/species.csv"))
+  output$gearTable <- renderTable({
+    tbl <- read.csv("data/gears.csv")
+    names(tbl) <- c("Gear", "Code")
+    tbl
+  })
+
+  output$gearSelectivityPlot <- renderPlotly(plot_ly())
+
   output$cumulativeMap <- renderPlot({
     scedir <- "data/CelticSea44/"
     scenarios <- dir(scedir, "^sce[^_]*")
@@ -90,27 +119,27 @@ server <- function(input, output) {
     do_polygon_plot(
       a_variable = input$sel.var,
       nby = 5,
-      a_set_of_scenarios=input$sel.sce,
-      the_scenario_names=input$sel.sce,
-      name_set_of_sces= "setA",
-      selected="_selected_set1_",
-      export=FALSE,
+      a_set_of_scenarios = input$sel.sce,
+      the_scenario_names = input$sel.sce,
+      name_set_of_sces = "setA",
+      selected = "_selected_set1_",
+      export = FALSE,
       a_ylab = switch(input$sel.var,
                       gradva = "Acc. GVA (million €)",
                       rev_from_av_prices = "Income from landings (mio Euro)",
                       rev_explicit_from_av_prices = "Income from landings (mio Euro)",
                       "Accumulated Gross Added Value (millions Euro)"),
-      add_legend=TRUE,
-      color_legend= c(rgb(94/255,79/255,162/255,0.5), rgb (158/255,1/255,66/255,0.5), rgb(140/255,81/255,10/255,0.4),
-                      rgb(1,0,0,0.5), rgb(0,0.5,1,0.5), rgb(0,1,0.5,0.5), rgb(1,0,0.5,0.5), rgb(0,0,0,0.2)),
-      a_width=3500,
-      a_height=1000
+      add_legend = TRUE,
+      color_legend = c(rgb(94/255,79/255,162/255,0.5), rgb(158/255,1/255,66/255,0.5), rgb(140/255,81/255,10/255,0.4),
+                       rgb(1,0,0,0.5), rgb(0,0.5,1,0.5), rgb(0,1,0.5,0.5), rgb(1,0,0.5,0.5), rgb(0,0,0,0.2)),
+      a_width = 3500,
+      a_height = 1000
 
     )
   })
 
   output$linePlot2 <- renderPlot({
-    par(mar=c(4,4,1.5,0.9))
+    par(mar = c(4,4,1.5,0.9))
     #onesim <- lst_loglike_agg_weight_all_scebaseline[[1]]
     onesim <- get(paste0("lst_loglike_agg_weight_all_", input$sel.sce))[[1]]
     str(onesim, 1)
@@ -128,7 +157,7 @@ server <- function(input, output) {
            "2" = par(mfrow = c(2,1)),
            "3" = par(mfrow = c(2,2)),
            "4" = par(mfrow = c(2,2)))
-    for(l in levels(lvls)) {
+    for (l in levels(lvls)) {
       matplot(ym, selected[, lvls == l],
               type = "l", ylab = "Catch (tonnes)", xlab = "")
       mtext(l, line = 0.5, cex = 1.3)
@@ -141,9 +170,9 @@ server <- function(input, output) {
     if (length(input$sel.sce) < 2) {
       warningPlot("Select two or more scenarios to compare")
     } else {
-      plot_popdyn (sces=input$sel.sce,
-                   explicit_pops= input$sel.pop,
-                   sum_all=input$sel.sum.szgroups
+        plot_popdyn(sces = input$sel.sce,
+                  explicit_pops = input$sel.pop,
+                  sum_all = input$sel.sum.szgroups
       ) }
   })
 
@@ -158,4 +187,4 @@ server <- function(input, output) {
 }
 
 
-shinyApp(ui = ui, server = server)
+shinyApp(ui = ui, server = server, options = list("shiny.autoload.r" = FALSE))
