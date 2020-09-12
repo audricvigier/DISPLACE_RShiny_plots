@@ -1,5 +1,4 @@
-barplotTotLandingsPerSce <- function(general=general,
-                                     type_of_column="pop", # or "disc"
+barplotTotLandingsPerSce <- function(type_of_column="pop", # or "disc"
                                      selected="_selected_set1_",
                                      selected_pops=c(0, 1, 2, 3, 11, 23, 24, 26),
                                      group1= c(0, 1, 2, 3, 11, 23, 24, 26),
@@ -86,7 +85,9 @@ barplotTotLandingsPerSce <- function(general=general,
     res <- NULL
     for(pop in pops){  # for each (explicit) pop
       mat.sim1 <- matrix(unlist(lapply(lst_loglike[ namesimu ], function(x){
-        res <- try(x[x$a_pop==pop, type_of_column], silent=TRUE); if(class(res)=="try-error") res <- rep(NA, ncol(lst_loglike[[refsimu]])); res
+        res <- try(x[x$a_pop==pop, type_of_column], silent=TRUE)
+        if(class(res)=="try-error") res <- rep(NA, ncol(lst_loglike[[refsimu]]))
+        res
       })), nrow=nrow(lst_loglike[[refsimu]][lst_loglike[[refsimu]]$a_pop==pop,]) , byrow=FALSE)
       colnames(mat.sim1) <- c(paste(type_of_column,"_", namesimu , sep=''))
 
@@ -249,12 +250,12 @@ barplotTotLandingsPerSce <- function(general=general,
   title ("First year", adj=0)
 
   mtext("Scenario", 1, line=0, cex=1.5, outer=TRUE)
-  if(type_of_column=="pop") mtext(side=2, "Annual landings [*000 tons]", line=0, cex=1., outer=TRUE)
-  if(type_of_column=="disc") mtext(side=2, "Annual discards [*000 tons]", line=0, cex=1., outer=TRUE)
+  if(type_of_column=="pop") mtext(side=2, "Annual landings [*000 tons]", line=0, cex=1, outer=TRUE)
+  if(type_of_column=="disc") mtext(side=2, "Annual discards [*000 tons]", line=0, cex=1, outer=TRUE)
 
-  mp_last_y <-  barplot(as.matrix(all_sces_last_y[,-1])/1e6, las=2, , ylim=ylims, xlab="", ylab="",
-                        col =some_colors , density=the_density,  legend=FALSE, axes = FALSE,axisnames = FALSE,
-                        args.legend = list(x = "topright", bty = "n", ncol=2))
+  mp_last_y <- barplot(as.matrix(all_sces_last_y[,-1])/1e6, las=2, ylim=ylims, xlab="", ylab="",
+                       col =some_colors , density=the_density,  legend=FALSE, axes = FALSE,axisnames = FALSE,
+                       args.legend = list(x = "topright", bty = "n", ncol=2))
   text(mp_last_y, par("usr")[3], labels = colnames(all_sces_last_y[-1]), srt = 45, adj = 1, xpd = TRUE, cex = 1)
   axis(2, las=2)
   title ("Last year", adj=0)

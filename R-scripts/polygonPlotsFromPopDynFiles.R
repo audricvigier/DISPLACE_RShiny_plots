@@ -5,7 +5,6 @@ plot_popdyn <- function(sces=sces,
                         sum_all=FALSE){
 
    pops <- sapply( strsplit(explicit_pops, split = "\\."), function(x) x[2])
-   cat(pops)
    namesimu <- lst_popdyn <- vector("list", length(sces))
 
    for (i in seq(sces)) {
@@ -15,8 +14,8 @@ plot_popdyn <- function(sces=sces,
       dd                <- table(unlist(lapply(res, nrow)))
       expected_nb_rows  <- as.numeric(names(dd[dd == max(dd)]))[1] # most common number of rows
       idx               <- unlist(lapply(res, function(x) nrow(x) == expected_nb_rows))
-      namesimu[[i]]          <- c(names(unlist(lapply(res, function(x) nrow(x) == expected_nb_rows)))[idx])
-      lst_popdyn[[i]] <- res[namesimu[[i]]]
+      namesimu[[i]]     <- c(names(unlist(lapply(res, function(x) nrow(x) == expected_nb_rows)))[idx])
+      lst_popdyn[[i]]   <- res[namesimu[[i]]]
    }
 
    # sum over sizegroup?
@@ -30,10 +29,15 @@ plot_popdyn <- function(sces=sces,
 
    # 1. nb of induviduals per (explicit) pop in each size bin
    # from a bunch of simus
-   if (length(pops) > 1) par(mfrow = c(2, 2))
+   npop <- length(pops)
+   if (npop > 1) {
+      layout(matrix(seq(npop + npop %% 2), ncol = 2))
+      par(cex = 1 + ((npop - 1) %/% 2) / 40)
+   }
    for (pop in pops) {  # for each (explicit) pop
-      this_pop <- lst_popdyn[[1]][[1]][lst_popdyn[[1]][[1]]$pop == pop, -c(1:2)]
-
+      simu1 <- lst_popdyn[[1]][[1]]
+      xs <- as.POSIXct("2015-1-1") + unique(simu1$tstep) * 3600
+      this_pop <- simu1[simu1$pop == pop, -c(1:2)]
       this_pop <- replace(this_pop, is.na(this_pop), 0)
       if (any(this_pop < 0)) cat(paste("negative numbers! check this pop ", pop, "\n"))
 
@@ -41,22 +45,18 @@ plot_popdyn <- function(sces=sces,
       a.xlab <- "month"
       a.ylab <- "million individuals"
 
-      plot(0, 0, type='n', axes=FALSE,
-           xlim = c(1,nrow(lst_popdyn[[1]][[1]][lst_popdyn[[1]][[1]]$pop == pop,])),
+      plot(xs, this_pop, type = 'n', axes = TRUE, las = 1,
            ylim = c(min(this_pop, na.rm = TRUE) / a.unit, (max(this_pop, na.rm = TRUE) / a.unit) * 1.1),
            ylab = "", xlab = "")
       title(popnames$spp[popnames$idx == pop])
+      title(ylab = a.ylab, line = 3)
 
-      mtext(side = 2, a.ylab, outer = TRUE, line = -1.2)
-      mtext(side = 1, a.xlab, outer = TRUE, line = -1)
-
-      axis(1, labels = 1:nrow(lst_popdyn[[1]][[1]][lst_popdyn[[1]][[1]]$pop==pop,]),
-           at = 1:nrow(lst_popdyn[[1]][[1]][lst_popdyn[[1]][[1]]$pop==pop,]))
-      axis(2, las = 2)
+      # axis(1, labels = 1:nrow(simu1[simu1$pop==pop,]),
+      #      at = 1:nrow(simu1[simu1$pop==pop,]))
       graphics::box()
 
       a.count <- 0
-      for (seg in colnames( lst_popdyn[[1]][[1]] )[-c(1:2)] ){  # for each col
+      for (seg in colnames( simu1 )[-c(1:2)] ){  # for each col
          cat(paste(seg, "\n"))
          a.count <- a.count + 1
 
@@ -78,7 +78,7 @@ plot_popdyn <- function(sces=sces,
 
          # polygon 5-95% for simus
          for (i in seq(mat.sim)) {
-            polygon(c(1:nrow(mat.sim[[i]]), rev(1:nrow(mat.sim[[i]]))  ),
+            polygon(c(xs, rev(xs)),
                     c(apply(mat.sim[[i]], 1, quantile, 0.05) / a.unit,
                       rev(apply(mat.sim[[i]], 1, quantile, 0.95) /  a.unit)) ,
                     col = cols[[i]][a.count],

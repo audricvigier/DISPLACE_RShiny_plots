@@ -167,6 +167,7 @@ makeCumulativeMap <- function(scedir,
         useRaster=FALSE,
         xlab="",
         ylab="",
+        asp=1,
         axes=FALSE #xlim=xlims, ylim=ylims
       )
       library(maps)
@@ -245,6 +246,7 @@ makeCumulativeMap <- function(scedir,
           xlab="",
           ylab="",
           axes=FALSE,
+          asp=1,
           xlim=xlims, ylim=ylims
         )
         if (!is.null(gis_shape))

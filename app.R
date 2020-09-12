@@ -47,15 +47,13 @@ ui <- dashboardPage(
                                   menuItem("Time series", tabName = "ts", icon = icon("chart-line"),
                                            selectInput("sel.sce", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE),
                                            selectInput("sel.var", "Select a variable", choices = selvar(), selected = "gradva", multiple = FALSE),
-                                           selectInput("sel.pop", "Select populations", choices = selpop(), selected = "pop.2", multiple = TRUE, selectize = FALSE),
-                                           selectInput("sel.sum.szgroups", "Sum over size groups", choices = c(TRUE, FALSE), selected = TRUE,
-                                                       multiple = FALSE, selectize = FALSE))),
+                                           checkboxInput("quantCumSum", label = "Cumulative sum", value = TRUE))),
                   convertMenuItem("tab_landis_perpop",
-                                  menuItem("Landings/dicards per population", tabName = "tab_landis_perpop", icon = icon("chart-bar"),
-                                           selectInput("sel.sce2", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE))),
-                  convertMenuItem("tab_plotlymap",
-                                  menuItem("Plotly map", tabName = "tab_plotlymap", icon = icon("chart-bar"), selected = TRUE,
-                                           selectInput("sel.sce2", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE)))
+                                  menuItem("Populations", tabName = "tab_landis_perpop", icon = icon("chart-bar"),
+                                           selectInput("sel.sce2", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE),
+                                           selectInput("sel.pop", "Select populations", choices = selpop(), selected = c("pop.2", "pop.5", "pop.7", "pop.12"), multiple = TRUE, selectize = FALSE),
+                                           selectInput("sel.sum.szgroups", "Sum over size groups", choices = c(TRUE, FALSE), selected = TRUE,
+                                                       multiple = FALSE, selectize = FALSE)))
       )
     )
   ),
@@ -74,16 +72,17 @@ ui <- dashboardPage(
               sbox(width = 6, title = "Gear categories", status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
                    div(tableOutput("gearTable")))),
       tabItem("map",
-              plotOutput("cumulativeMap", height = "750px", width = "1024px")
+              plotOutput("cumulativeMap", height = "500px")
       ),
       tabItem("ts",
               fluidRow(
-                sbox(width = 6, plotOutput("linePlot"), title = "", status = "primary", solidHeader = TRUE),
-                sbox(width = 6, plotOutput("linePlot2"), title = "Catch development over time", status = "primary", solidHeader = TRUE),
-                sbox(width = 6, plotOutput("linePlot3"), title = "", status = "primary", solidHeader = TRUE)
+                sbox(width = 6, plotOutput("linePlot"), title = "", status = "primary", solidHeader = FALSE)
               )),
       tabItem("tab_landis_perpop",
-              plotOutput("barplot_landis_perpop")),
+              fluidRow(
+              sbox(plotOutput("barplot_landis_perpop"), title = "Landings per population", solidHeader = TRUE, status = "primary"),
+              sbox(width = 6, plotOutput("catchTimeSeriesPlot"), title = "Catch development over time", status = "primary", solidHeader = TRUE),
+              sbox(width = 6, plotOutput("populationSizePlot", height = "auto"), title = "Population size", status = "primary", solidHeader = TRUE))),
       tabItem("tab_plotlymap",
               plotlyOutput("cumulativeMaps"))
     )
@@ -99,8 +98,6 @@ server <- function(input, output) {
     tbl
   })
 
-  output$gearSelectivityPlot <- renderPlotly(plot_ly())
-
   output$cumulativeMap <- renderPlot({
     scedir <- "data/CelticSea44/"
     scenarios <- dir(scedir, "^sce[^_]*")
@@ -113,22 +110,25 @@ server <- function(input, output) {
 
   })
 
-  output$linePlot <- renderPlot({
+    output$linePlot <- renderPlot({
     req(input$sel.var, input$sel.sce)
     par(mar = c(4, 5, 0.5, 0.5))
     do_polygon_plot(
       a_variable = input$sel.var,
       nby = 5,
+      documsum = input$quantCumSum,
       a_set_of_scenarios = input$sel.sce,
-      the_scenario_names = input$sel.sce,
+      the_scenario_names = sub("sce", "", input$sel.sce),
       name_set_of_sces = "setA",
       selected = "_selected_set1_",
       export = FALSE,
       a_ylab = switch(input$sel.var,
-                      gradva = "Acc. GVA (million €)",
-                      rev_from_av_prices = "Income from landings (mio Euro)",
-                      rev_explicit_from_av_prices = "Income from landings (mio Euro)",
-                      "Accumulated Gross Added Value (millions Euro)"),
+                      gradva = "Accumulated Gross Value Added (million €)",
+                      rev_from_av_prices = "Income from landings (million €)",
+                      effort = "Effort",
+                      nbtrip = "Number of trips",
+                      totland = "Total landings",
+                      ""),
       add_legend = TRUE,
       color_legend = c(rgb(94/255,79/255,162/255,0.5), rgb(158/255,1/255,66/255,0.5), rgb(140/255,81/255,10/255,0.4),
                        rgb(1,0,0,0.5), rgb(0,0.5,1,0.5), rgb(0,1,0.5,0.5), rgb(1,0,0.5,0.5), rgb(0,0,0,0.2)),
@@ -138,47 +138,47 @@ server <- function(input, output) {
     )
   })
 
-  output$linePlot2 <- renderPlot({
+  output$catchTimeSeriesPlot <- renderPlot({
     par(mar = c(4,4,1.5,0.9))
     #onesim <- lst_loglike_agg_weight_all_scebaseline[[1]]
-    onesim <- get(paste0("lst_loglike_agg_weight_all_", input$sel.sce))[[1]]
-    str(onesim, 1)
-    ym <- ym2date(onesim$year.month)
-    nms <- names(onesim)
-    selected <- onesim[, nms %in% input$sel.pop, drop = FALSE] / 1000
-    maxima <- apply(selected, 2, max)
-    limits <- c(0, 10, 100, 1000, Inf)
-    labels <- paste("Max catches: ", paste(limits[-5], limits[-1], sep = "-"), "tonnes")
-    labels[length(labels)] <- "Max catches: > 1000 tonnes"
-    lvls <- droplevels(cut(maxima, limits, include.lowest = TRUE,
-                           labels = labels))
-    switch(length(levels(lvls)),
-           "1" = par(mfrow = c(1,1)),
-           "2" = par(mfrow = c(2,1)),
-           "3" = par(mfrow = c(2,2)),
-           "4" = par(mfrow = c(2,2)))
-    for (l in levels(lvls)) {
-      matplot(ym, selected[, lvls == l],
-              type = "l", ylab = "Catch (tonnes)", xlab = "")
-      mtext(l, line = 0.5, cex = 1.3)
+    add <- FALSE
+    for (s in input$sel.sce2) {
+      onesim <- get(paste0("lst_loglike_agg_weight_all_", s))[[1]]
+      ym <- ym2date(onesim$year.month)
+      nms <- names(onesim)
+      selected <- onesim[, nms %in% input$sel.pop, drop = FALSE] / 1000
+      maxima <- apply(selected, 2, max)
+      limits <- c(0, 10, 100, 1000, Inf)
+      labels <- paste("Max catches: ", paste(limits[-5], limits[-1], sep = "-"), "tonnes")
+      labels[length(labels)] <- "Max catches: > 1000 tonnes"
+      lvls <- droplevels(cut(maxima, limits, include.lowest = TRUE,
+                             labels = labels))
+      switch(length(levels(lvls)),
+             "1" = par(mfrow = c(1,1)),
+             "2" = par(mfrow = c(2,1)),
+             "3" = par(mfrow = c(2,2)),
+             "4" = par(mfrow = c(2,2)))
+      for (l in levels(lvls)) {
+        matplot(ym, selected[, lvls == l],
+                type = "l", ylab = "Catch (tonnes)", xlab = "", add = add)
+        add <- FALSE
+        mtext(l, line = 0.5, cex = 1.3)
+      }
     }
   })
 
 
-  output$linePlot3 <- renderPlot({
-    req(input$sel.pop, input$sel.sce, input$sel.sum.szgroups)
-    if (length(input$sel.sce) < 2) {
-      warningPlot("Select two or more scenarios to compare")
-    } else {
-        plot_popdyn(sces = input$sel.sce,
-                  explicit_pops = input$sel.pop,
-                  sum_all = input$sel.sum.szgroups
-      ) }
-  })
+  output$populationSizePlot <- renderPlot({
+    req(input$sel.pop, input$sel.sce2, input$sel.sum.szgroups)
+    plot_popdyn(sces = input$sel.sce2,
+                explicit_pops = input$sel.pop,
+                sum_all = input$sel.sum.szgroups)
+  }, height = function() {((length(input$sel.pop) + 1) %/% 2 ) * 300 })
 
   output$barplot_landis_perpop <- renderPlot({
     #warningPlot("Not implemented yet")
-    barplotTotLandingsPerSce(selected_scenarios = input$sel.sce2, scenarios_names = input$sel.sce2)
+    barplotTotLandingsPerSce(selected_scenarios = input$sel.sce2, scenarios_names = sub("sce", "", input$sel.sce2),
+                             selected_pops = sub("pop.", "", input$sel.pop))
   })
 
   output$cumulativeMaps <- renderPlotly({

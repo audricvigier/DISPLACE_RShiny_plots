@@ -20,8 +20,9 @@ selsce <- function() {
 }
 
 selvar <- function() {
-  nms <- names(lst_loglike_agg_weight_all_scebaseline[[1]])
-  nms[-1]
+  #nms <- names(lst_loglike_agg_weight_all_scebaseline[[1]])
+  #nms[-1]
+  c(GVA = "gradva", Revenue = "rev_from_av_prices", "Total landings" = "totland", "Effort" = "effort", "Number of trips" = "nbtrip")
 }
 
 selsumoverszgrp <- function(){

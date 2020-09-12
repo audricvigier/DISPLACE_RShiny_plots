@@ -47,6 +47,7 @@ do_polygon_plot <- function(
   name_set_of_sces= "setA",
   selected=selected,
   export=FALSE,
+  documsum = FALSE,
   a_xlab="# months",
   a_ylab="Accumulated Gross Added Value (millions Euro)",
   add_legend=FALSE,
@@ -56,7 +57,7 @@ do_polygon_plot <- function(
   a_height=a_height
 ) {
   ## Made docsum into a function: it is `cumsum` if cumulative sum is needed documsum is the cumsum function otherwise it's just the identity function
-  documsum <- if(a_variable %in% c("GVAPerFTE")) identity else cumsum
+  documsum <- if (documsum) cumsum else identity ## if(a_variable %in% c("GVAPerFTE")) identity else cumsum
 
   sce <- a_set_of_scenarios
   obj <- lapply(sce, function(x) get(paste("lst_loglike_agg_weight", selected, x, sep=''), env=.GlobalEnv))
@@ -96,16 +97,18 @@ do_polygon_plot <- function(
   er <- try(   {
     qs <- lapply(mat, function(m) apply(m[,1:(nby*12)], 2, quantile, probs=c(0.05, 0.95), na.rm=TRUE))
     ylim <- range(unlist(qs)) / 1e6
-    plot(obj[[1]][[1]][, a_variable], ylim = ylim, type="n", xlab="Months", ylab="", cex.lab=1.6, axes=FALSE)
+    xs <-  ym2date(obj[[1]][[1]]$year.month)
+    plot(xs, obj[[1]][[1]][, a_variable], ylim = ylim, type = "n", xlab = "Year", ylab = "", axes = FALSE)
     makeone <- function(i) {
-      xs <- (1:ncol(mat[[i]]))[1:(nby*12)]
+      ## xs <- (1:ncol(mat[[i]]))[1:(nby*12)]
+
       polygon(x=c(xs, rev(xs)), y=c(qs[[i]]["5%", ], rev(qs[[i]]["95%", ])) / 1e6,
               col = color_legend[i], border = NA)
     }
     lapply(seq_along(mat), makeone)
 
-    axis(2, las=2, cex.axis=1.5)
-    axis(1, cex.axis=1.5)
+    axis(2, las=2)
+    axis(1)
     if(add_legend) legend("topleft", fill=color_legend, border =color_legend, legend=the_scenario_names, cex=1.3, bty="n")
     graphics::box()
 
