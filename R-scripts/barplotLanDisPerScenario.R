@@ -235,7 +235,7 @@ barplotTotLandingsPerSce <- function(type_of_column="pop", # or "disc"
   #      width = a_width, height = a_height,   compression="lzw",
   #      units = "px", pointsize = 12,  res=300)
   par(mfrow=c(1,2))
-  par(mar=c(7,3,2,2))
+  par(mar=c(5,3,2,2))
   par(oma=c(3,2,1,1))
 
 
@@ -243,8 +243,8 @@ barplotTotLandingsPerSce <- function(type_of_column="pop", # or "disc"
   rownames(all_sces_last_y) <- all_sces_last_y[,1]
 
   mp_first_y <-  barplot(as.matrix(all_sces_first_y[,-1])/1e6, las=2,  ylim=ylims, xlab="", ylab="",
-                         col =some_colors , density=the_density, legend=TRUE, axes = FALSE,axisnames = FALSE,
-                         args.legend = list(x = "topright", bty = "n", ncol=2, cex=0.9))
+                         col =some_colors , density=the_density, legend.text=popnames$spp[popnames$idx %in% selected_pops], axes = FALSE,axisnames = FALSE,
+                         args.legend = list(x = "topright", bty = "o", ncol=2, cex=0.9))
   text(mp_first_y, par("usr")[3], labels = colnames(all_sces_first_y[-1]), srt = 45, adj = 1, xpd = TRUE, cex = 1)
   axis(2, las=2)
   title ("First year", adj=0)
