@@ -71,14 +71,15 @@ ui <- dashboardPage(
                      An innovative fisheries management measure, a fishing credits system
                       is used in this context to help to incentivize displacing the fishing towards areas minimizing
                       the final net effects and is further contrasted against testing spatial management with closed areas.")),
-              sbox(width = 6, title = "Conditioning fisheries", status = "primary", solidHeader = TRUE, collapsible = TRUE,
-                   div("Fishing vessels of the Irish demersal fishing fleet are considered (DAFM, 2017; EC, 2017). "), collapsed = TRUE),
-              sbox(width = 6, title = "Study area", status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
-                   div(img(src = "studyAreaMap.png"))),
-              sbox(width = 6, title = "Species", status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
+              sbox(width = 6, title = "Study area", status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                   div(img(src = "studyAreaMap.png", width = "95%"))),
+              sbox(width = 6, title = "Species", status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
                    div(tableOutput("speciesTable"))),
-              sbox(width = 6, title = "Gear categories", status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
-                   div(tableOutput("gearTable")))),
+              sbox(width = 6, title = "Gear categories", status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                   div(tableOutput("gearTable"))),
+              sbox(width = 6, title = "Conditioning fisheries", status = "primary", solidHeader = TRUE, collapsible = TRUE,
+                   div("Fishing vessels of the Irish demersal fishing fleet are considered (DAFM, 2017; EC, 2017). "), collapsed = FALSE)),
+
       tabItem("map",
               plotOutput("cumulativeMap", height = "500px")
       ),
