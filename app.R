@@ -80,8 +80,8 @@ ui <- dashboardPage(
               )),
       tabItem("tab_landis_perpop",
               fluidRow(
-              sbox(plotOutput("barplot_landis_perpop"), title = "Landings per population", solidHeader = TRUE, status = "primary"),
               sbox(width = 6, plotOutput("catchTimeSeriesPlot"), title = "Catch development over time", status = "primary", solidHeader = TRUE),
+              sbox(plotOutput("barplot_landis_perpop"), title = "Landings per population", solidHeader = TRUE, status = "primary"),
               sbox(width = 6, plotOutput("populationSizePlot", height = "auto"), title = "Population size", status = "primary", solidHeader = TRUE))),
       tabItem("tab_plotlymap",
               plotlyOutput("cumulativeMaps"))
@@ -99,10 +99,11 @@ server <- function(input, output) {
   })
 
   output$cumulativeMap <- renderPlot({
-    scedir <- "data/CelticSea44/"
-    scenarios <- dir(scedir, "^sce[^_]*")
-    m <- regexpr("sce[^_]*", scenarios)
-    scenarios <- unique(regmatches(scenarios, m))
+    # scedir <- "data/CelticSea44/"
+    # scenarios <- dir(scedir, "^sce[^_]*")
+    # m <- regexpr("sce[^_]*", scenarios)
+    # scenarios <- unique(regmatches(scenarios, m))
+    scenarios <- unique(sapply(strsplit(dir("output", ".*Rds"), split = "_"), first))
     outdir <- "output"
 
     makeCumulativeMap(scedir = scedir, outdir = outdir, scenarios = scenarios,

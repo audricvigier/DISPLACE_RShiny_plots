@@ -1,5 +1,3 @@
-
-
 plot_popdyn <- function(sces=sces,
                         explicit_pops= explicit_pops,
                         sum_all=FALSE){
