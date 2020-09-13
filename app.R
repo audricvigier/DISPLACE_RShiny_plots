@@ -62,7 +62,15 @@ ui <- dashboardPage(
       tabItem("intro",
               h2("DISPLACE model for the Irish demersal Celtic Sea fisheries"),
               sbox(width = 12, title = "Background", status = "primary", solidHeader = FALSE, collapsible = FALSE,
-                   div("Little info about the aim of the DISPLACE model.")),
+                   div("We present the outcomes of the DISPLACE agent-based modelling platform for simulating bio-economic fisheries dynamics and clarifying options for sustainable and viable fisheries in the Celtic Sea. 
+                       In the present case study, we address the issue of quota underutilization from choked species
+                    that would arise from annual decisions on TACs not matching the opportunities of individual fishers. 
+                   We, therefore, explore the potential benefits of spatial avoidance (or spatial selectivity) 
+                   by displacing the fishing to other areas but also measuring the change of pressure on other ecosystem components,
+                    i.e., including i) effects on other species via trophic interactions effects ii) effects on benthic habitats.
+                     An innovative fisheries management measure, a fishing credits system 
+                      is used in this context to help to incentivize displacing the fishing towards areas minimizing 
+                      the final net effects and is further contrasted against testing spatial management with closed areas.")),
               sbox(width = 6, title = "Conditioning fisheries", status = "primary", solidHeader = TRUE, collapsible = TRUE,
                    div("Fishing vessels of the Irish demersal fishing fleet are considered (DAFM, 2017; EC, 2017). "), collapsed = TRUE),
               sbox(width = 6, title = "Study area", status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
@@ -100,9 +108,11 @@ server <- function(input, output) {
 
   output$cumulativeMap <- renderPlot({
     # scedir <- "data/CelticSea44/"
+     scedir <- ""
     # scenarios <- dir(scedir, "^sce[^_]*")
     # m <- regexpr("sce[^_]*", scenarios)
     # scenarios <- unique(regmatches(scenarios, m))
+    first <- function(x) x[1]
     scenarios <- unique(sapply(strsplit(dir("output", ".*Rds"), split = "_"), first))
     outdir <- "output"
 

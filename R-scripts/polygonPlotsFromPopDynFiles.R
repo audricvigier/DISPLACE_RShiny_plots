@@ -43,7 +43,8 @@ plot_popdyn <- function(sces=sces,
       a.xlab <- "month"
       a.ylab <- "million individuals"
 
-      plot(xs, this_pop, type = 'n', axes = TRUE, las = 1,
+      if(sum_all)  y <- this_pop else y <- this_pop[[1]]
+       plot(xs, y, type = 'n', axes = TRUE, las = 1,
            ylim = c(min(this_pop, na.rm = TRUE) / a.unit, (max(this_pop, na.rm = TRUE) / a.unit) * 1.1),
            ylab = "", xlab = "")
       title(popnames$spp[popnames$idx == pop])
@@ -57,7 +58,6 @@ plot_popdyn <- function(sces=sces,
       for (seg in colnames( simu1 )[-c(1:2)] ){  # for each col
          cat(paste(seg, "\n"))
          a.count <- a.count + 1
-
          mat.sim <- mapply(function(lp, ns) {
             res <- matrix(unlist(lapply(lp[ns], function(x) {
                res <- try(x[x$pop == pop,seg], silent = TRUE)
