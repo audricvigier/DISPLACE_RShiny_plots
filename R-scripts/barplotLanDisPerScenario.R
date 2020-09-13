@@ -243,7 +243,7 @@ barplotTotLandingsPerSce <- function(type_of_column="pop", # or "disc"
   rownames(all_sces_last_y) <- all_sces_last_y[,1]
 
   mp_first_y <-  barplot(as.matrix(all_sces_first_y[,-1])/1e6, las=2,  ylim=ylims, xlab="", ylab="",
-                         col =some_colors , density=the_density, legend.text=popnames$spp[popnames$idx %in% selected_pops], axes = FALSE,axisnames = FALSE,
+                         col =some_colors[popnames$idx %in% selected_pops] , density=the_density, legend.text=popnames$spp[popnames$idx %in% selected_pops], axes = FALSE,axisnames = FALSE,
                          args.legend = list(x = "topright", bty = "o", ncol=2, cex=0.9))
   text(mp_first_y, par("usr")[3], labels = colnames(all_sces_first_y[-1]), srt = 45, adj = 1, xpd = TRUE, cex = 1)
   axis(2, las=2)
@@ -254,7 +254,7 @@ barplotTotLandingsPerSce <- function(type_of_column="pop", # or "disc"
   if(type_of_column=="disc") mtext(side=2, "Annual discards [*000 tons]", line=0, cex=1, outer=TRUE)
 
   mp_last_y <- barplot(as.matrix(all_sces_last_y[,-1])/1e6, las=2, ylim=ylims, xlab="", ylab="",
-                       col =some_colors , density=the_density,  legend=FALSE, axes = FALSE,axisnames = FALSE,
+                       col =some_colors[popnames$idx %in% selected_pops] , density=the_density,  legend=FALSE, axes = FALSE,axisnames = FALSE,
                        args.legend = list(x = "topright", bty = "n", ncol=2))
   text(mp_last_y, par("usr")[3], labels = colnames(all_sces_last_y[-1]), srt = 45, adj = 1, xpd = TRUE, cex = 1)
   axis(2, las=2)
