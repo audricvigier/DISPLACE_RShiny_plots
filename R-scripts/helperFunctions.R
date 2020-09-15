@@ -15,7 +15,7 @@ selpop <- function() {
 }
 
 selindic <- function() {
-c("FFinit", "SSBSSBinit", "TLandTLandinit", "TDiscTDiscinit", "TacTacinit")
+c("F/Finit", "SSB/SSBinit", "TLand/TLandinit", "TDisc/TDiscinit", "Tac/Tacinit")
 }
 
 selsce <- function() {

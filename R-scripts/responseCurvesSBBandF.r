@@ -9,7 +9,7 @@ plot_annualindic <- function(sces=sces,
     for(sce in sces) {
        print(paste("sce ", sce))
        lst <- get(paste("lst_annualindic_", sce, sep = ''), env = .GlobalEnv)
-       for(simu in length(lst)) {
+       for(simu in 1: length(lst)) {
           print(paste("sim ", simu))
           # merge all infos
           annual_indics <- lst[[simu]] 
@@ -25,11 +25,11 @@ plot_annualindic <- function(sces=sces,
    outcome_firsty <- res[res$tstep==8761,]  
    outcome_lasty <- res[res$tstep==35065,]  
    outcome <- merge(outcome_firsty, outcome_lasty, by.x=c('stk', 'sce', 'simu'), by.y=c('stk', 'sce', 'simu'))
-   outcome$"FFinit" <- outcome$Fbar.y/outcome$Fbar.x
-   outcome$"SSBSSBinit" <- outcome$SSB_kg.y/outcome$SSB_kg.x
-   outcome$"TLandTLandinit" <- outcome$totland_kg.y/outcome$totland_kg.x
-   outcome$"TDiscTDiscinit" <- outcome$totdisc_kg.y/outcome$totdisc_kg.x
-   outcome$"TacTacinit" <- outcome$tac.y/outcome$tac.x
+   outcome$"F/Finit" <- outcome$Fbar.y/outcome$Fbar.x
+   outcome$"SSB/SSBinit" <- outcome$SSB_kg.y/outcome$SSB_kg.x
+   outcome$"TLand/TLandinit" <- outcome$totland_kg.y/outcome$totland_kg.x
+   outcome$"TDisc/TDiscinit" <- outcome$totdisc_kg.y/outcome$totdisc_kg.x
+   outcome$"Tac/Tacinit" <- outcome$tac.y/outcome$tac.x
    
    
 
@@ -38,12 +38,12 @@ plot_annualindic <- function(sces=sces,
 
 
    # put in long format
-   df1 <- cbind.data.frame(outcome[,c('stk','sce','simu','FFinit')], var="FFinit")
-   df2 <- cbind.data.frame(outcome[,c('stk','sce','simu','SSBSSBinit')] , var="SSBSSBinit")
-   df3 <- cbind.data.frame(outcome[,c('stk','sce','simu','SSBSSBinit')] , var="TLandTLandinit")
-   df4 <- cbind.data.frame(outcome[,c('stk','sce','simu','SSBSSBinit')] , var="TDiscTDiscinit")
-   df5 <- cbind.data.frame(outcome[,c('stk','sce','simu','SSBSSBinit')] , var="TacTacinit")
-   colnames(df1) <- colnames(df2) <- colnames(df3) <- colnames(df4) <- colnames(df5) <- c('stk','sce','simu','value','var')
+   df1 <- cbind.data.frame(outcome[,c('stk','sce','simu','F/Finit')], indicator="F/Finit")
+   df2 <- cbind.data.frame(outcome[,c('stk','sce','simu','SSB/SSBinit')] , indicator="SSB/SSBinit")
+   df3 <- cbind.data.frame(outcome[,c('stk','sce','simu','TLand/TLandinit')] , indicator="TLand/TLandinit")
+   df4 <- cbind.data.frame(outcome[,c('stk','sce','simu','TDisc/TDiscinit')] , indicator="TDisc/TDiscinit")
+   df5 <- cbind.data.frame(outcome[,c('stk','sce','simu','Tac/Tacinit')] , indicator="Tac/Tacinit")
+   colnames(df1) <- colnames(df2) <- colnames(df3) <- colnames(df4) <- colnames(df5) <- c('stk','sce','simu','value','indicator')
    out <- rbind.data.frame(df1,df2, df3, df4, df5)
    
 
@@ -51,8 +51,8 @@ plot_annualindic <- function(sces=sces,
  # SSB, F and whatever  
  library(ggplot2)
    pops <- gsub("pop.","", explicit_pops)
-   p <- ggplot(out[out$stk==pops & (out$var %in% indic),], aes(x=sce, y=value))  + geom_boxplot(position="dodge",aes(fill=var, outlier.shape=NA))  +
-             labs(x = "Scenario", y = "Value")  + facet_wrap( ~ stk+var, ncol=2, scales="fixed")     + ylim(0, 5)
+   p <- ggplot(out[out$stk==pops & (out$indicator %in% indic),], aes(x=sce, y=value))  + geom_boxplot(position="dodge", aes(fill=indicator, outlier.shape="*"))  +
+             labs(x = "Scenario", y = "Value")  + facet_wrap( ~ stk+indicator, ncol=2, scales="fixed")  #   + ylim(0, 1)
  print(
        p   + 
        theme_bw()+
