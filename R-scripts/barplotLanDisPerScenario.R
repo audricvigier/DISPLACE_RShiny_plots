@@ -242,6 +242,8 @@ barplotTotLandingsPerSce <- function(type_of_column="pop", # or "disc"
   rownames(all_sces_first_y) <- all_sces_first_y[,1]
   rownames(all_sces_last_y) <- all_sces_last_y[,1]
 
+  ylims <- c(0, max(as.matrix(all_sces_first_y[,-1])/1e6, as.matrix(all_sces_last_y[,-1])/1e6, na.rm=TRUE))
+ 
   mp_first_y <-  barplot(as.matrix(all_sces_first_y[,-1])/1e6, las=2,  ylim=ylims, xlab="", ylab="",
                          col =some_colors[popnames$idx %in% selected_pops] , density=the_density, legend.text=popnames$spp[popnames$idx %in% selected_pops], axes = FALSE,axisnames = FALSE,
                          args.legend = list(x = "topright", bty = "o", ncol=2, cex=0.9))
