@@ -131,7 +131,7 @@ server <- function(input, output) {
 
     output$linePlot <- renderPlot({
     req(input$sel.var, input$sel.sce)
-    par(mar = c(4, 5, 0.5, 0.5))
+    par(mar = c(4, 5, 1, 1))
     do_polygon_plot(
       a_variable = input$sel.var,
       nby = 5,
@@ -218,7 +218,8 @@ server <- function(input, output) {
                  scenarios_names= names(selsce())[selsce()%in%input$sel.sce2],
                 explicit_pops = input$sel.pop,
                 indic = input$sel.indic)
-  }, height = function() {((length(input$sel.pop) + 1) %/% 2 ) * 300 })
+  }, height = function() {length(input$sel.indic) * 300 },
+  pointsize = 15)
 
 
   output$barplot_landis_perpop <- renderPlot({
