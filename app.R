@@ -169,7 +169,7 @@ server <- function(input, output) {
                '#CCCCCC','#E41A1C','#377EB8','#4DAF4A','#984EA3','#FF7F00','#FFFF33','#A65628','#F781BF','#999999','#66C2A5',
                '#FC8D62','#8DA0CB','#E78AC3','#A6D854','#FFD92F','#E5C494','#B3B3B3','#8DD3C7','#FFFFB3','#BEBADA','#FB8072',
                '#80B1D3','#FDB462','#B3DE69','#FCCDE5','#D9D9D9','#BC80BD','#CCEBC5','#FFED6F')
-    par(mar = c(4,4,1.5,0.9))
+    par(mar = c(6,4,3.5,0.9), xpd = TRUE)
     #onesim <- lst_loglike_agg_weight_all_scebaseline[[1]]
     add <- FALSE
     for (s in input$sel.sce2) {
@@ -197,8 +197,8 @@ server <- function(input, output) {
                 type = "l", ylab = "Catch (tonnes)", xlab = "", add = add, lty = 1, lwd = 3,
                 col = cls)
         mtext(l, line = 0.5, cex = 1.3)
-        legend("topleft", bty = "n", legend = nms, col = cls,
-               lty = 1, seg.len = 4, lwd = 3, box.col = "#00000022")
+        legend("bottomleft", bty = "n", legend = nms, col = cls, inset = c(0, -0.8),
+               lty = 1, seg.len = 1, lwd = 3, box.col = "#00000022", ncol = 3, cex = 0.8)
       }
     }
   })
@@ -207,7 +207,7 @@ server <- function(input, output) {
   output$populationSizePlot <- renderPlot({
     req(input$sel.pop, input$sel.sce2, input$sel.sum.szgroups)
     plot_popdyn(sces = input$sel.sce2,
-                scenarios_names= names(selsce())[selsce()%in%input$sel.sce2],
+                scenarios_names= names(selsce())[selsce() %in% input$sel.sce2],
                 explicit_pops = input$sel.pop,
                 sum_all = input$sel.sum.szgroups)
   }, height = function() {((length(input$sel.pop) + 1) %/% 2 ) * 300 })
@@ -215,11 +215,10 @@ server <- function(input, output) {
   output$annualIndicPlot <- renderPlot({
     req(input$sel.pop, input$sel.sce2, input$sel.indic)
     plot_annualindic(sces = input$sel.sce2,
-                 scenarios_names= names(selsce())[selsce()%in%input$sel.sce2],
+                 scenarios_names = names(selsce())[selsce() %in% input$sel.sce2],
                 explicit_pops = input$sel.pop,
                 indic = input$sel.indic)
-  }, height = function() {length(input$sel.indic) * 300 },
-  pointsize = 15)
+  }, height = function() {length(input$sel.indic) * 150 + 150 })
 
 
   output$barplot_landis_perpop <- renderPlot({
