@@ -71,7 +71,10 @@ plot_popdyn <- function(sces=sces,
 
          cols <- list(rgb(colorRamp(c("#d95f02", "white"))(seq(0, 1, length = 14)), max = 255, alpha = 100),
                       rgb(colorRamp(c("#7570b3", "white"))(seq(0, 1, length = 14)), max = 255, alpha = 100),
-                      rgb(colorRamp(c("#1b9e77", "white"))(seq(0, 1, length = 14)), max = 255, alpha = 100))
+                      rgb(colorRamp(c("#1b9e77", "white"))(seq(0, 1, length = 14)), max = 255, alpha = 100),
+                      rgb(colorRamp(c("#E5D8BD", "white"))(seq(0, 1, length = 14)), max = 255, alpha = 100),
+                      rgb(colorRamp(c("#A6D854", "white"))(seq(0, 1, length = 14)), max = 255, alpha = 100),
+                      rgb(colorRamp(c("#CCEBC5", "white"))(seq(0, 1, length = 14)), max = 255, alpha = 100))
 
 
          # polygon 5-95% for simus

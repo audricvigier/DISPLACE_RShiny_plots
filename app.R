@@ -57,7 +57,7 @@ ui <- dashboardPage(
                                   menuItem("Populations", tabName = "tab_landis_perpop", icon = icon("chart-bar"),
                                            selectInput("sel.sce2", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE),
                                            selectInput("sel.pop", "Select populations", choices = selpop(), selected = c("pop.2", "pop.5", "pop.7", "pop.12"), multiple = TRUE, selectize = FALSE),
-                                           selectInput("sel.indic", "Select indicators", choices = selindic(), selected = c("Fbar"), multiple = TRUE, selectize = FALSE),
+                                           selectInput("sel.indic", "Select indicators", choices = selindic(), selected = c("FFinit"), multiple = TRUE, selectize = FALSE),
                                            selectInput("sel.sum.szgroups", "Sum over size groups", choices = c(TRUE, FALSE), selected = TRUE,
                                                        multiple = FALSE, selectize = FALSE)))
       )

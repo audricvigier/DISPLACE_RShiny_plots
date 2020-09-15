@@ -15,7 +15,7 @@ selpop <- function() {
 }
 
 selindic <- function() {
-c("Fbar", "totland_kg", "totdisc_kg", "SSB_kg")
+c("FFinit", "SSBSSBinit", "TLandTLandinit", "TDiscTDiscinit", "TacTacinit")
 }
 
 selsce <- function() {
