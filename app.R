@@ -1,3 +1,4 @@
+
 library(shiny)
 library(shinydashboard)
 library(plotly)
@@ -10,6 +11,7 @@ source("R-scripts/polygonPlotsFromAggLoglikeFiles.R", local = TRUE)
 source("R-scripts/polygonPlotsFromPopDynFiles.R", local = TRUE)
 source("R-scripts/helperFunctions.R", local = TRUE)
 source("R-scripts/barplotLanDisPerScenario.R", local = TRUE)
+source("R-scripts/responseCurvesSBBandF.R", local = TRUE)
 
 sbox <- shinydashboard::box
 
@@ -18,9 +20,12 @@ loglikefns <- dir("data", "loglike.*RData", full.names = TRUE)
 loglikescenarios <- gsub("^.*agg_|[.]RData", "", loglikefns)
 popdynfns <- dir("data", "popdyn.*RData", full.names = TRUE)
 popdynscenarios <- gsub("^.*popdyn_|[.]RData", "", popdynfns)
+annualindicfns <- dir("data", "lst_annualindic.*RData", full.names = TRUE)
+annualindicscenarios <- gsub("^.*lst_annualindic_|[.]RData", "", popdynfns)
+
 
 ## Load all loglike and popdyn files
-for (f in c(loglikefns, popdynfns)) load(f, envir = .GlobalEnv)
+for (f in c(loglikefns, popdynfns, annualindicfns)) load(f, envir = .GlobalEnv)
 
 ## Read population names
 ## popnames <- read.table("data/CelticSea44/pop_names_CelticSea.txt", header = TRUE); save("popnames", file = "data/popnames.Rdata")
@@ -52,6 +57,7 @@ ui <- dashboardPage(
                                   menuItem("Populations", tabName = "tab_landis_perpop", icon = icon("chart-bar"),
                                            selectInput("sel.sce2", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE),
                                            selectInput("sel.pop", "Select populations", choices = selpop(), selected = c("pop.2", "pop.5", "pop.7", "pop.12"), multiple = TRUE, selectize = FALSE),
+                                           selectInput("sel.indic", "Select indicators", choices = selindic(), selected = c("Fbar"), multiple = TRUE, selectize = FALSE),
                                            selectInput("sel.sum.szgroups", "Sum over size groups", choices = c(TRUE, FALSE), selected = TRUE,
                                                        multiple = FALSE, selectize = FALSE)))
       )
@@ -91,7 +97,8 @@ ui <- dashboardPage(
               fluidRow(
               sbox(width = 6, plotOutput("catchTimeSeriesPlot"), title = "Catch development over time", status = "primary", solidHeader = TRUE),
               sbox(plotOutput("barplot_landis_perpop"), title = "Landings per population", solidHeader = TRUE, status = "primary"),
-              sbox(width = 6, plotOutput("populationSizePlot", height = "auto"), title = "Population size", status = "primary", solidHeader = TRUE))),
+              sbox(width = 6, plotOutput("populationSizePlot", height = "auto"), title = "Population size", status = "primary", solidHeader = TRUE),
+              sbox(width = 6, plotOutput("annualIndicPlot", height = "auto"), title = "Annual Indicator", status = "primary", solidHeader = TRUE))),
       tabItem("tab_plotlymap",
               plotlyOutput("cumulativeMaps"))
     )
@@ -203,6 +210,14 @@ server <- function(input, output) {
                 explicit_pops = input$sel.pop,
                 sum_all = input$sel.sum.szgroups)
   }, height = function() {((length(input$sel.pop) + 1) %/% 2 ) * 300 })
+
+  output$annualIndicPlot <- renderPlot({
+    req(input$sel.pop, input$sel.sce2, input$sel.indic)
+    plot_annualindic(sces = input$sel.sce2,
+                explicit_pops = input$sel.pop,
+                indic = input$sel.indic)
+  }, height = function() {((length(input$sel.pop) + 1) %/% 2 ) * 300 })
+
 
   output$barplot_landis_perpop <- renderPlot({
     #warningPlot("Not implemented yet")

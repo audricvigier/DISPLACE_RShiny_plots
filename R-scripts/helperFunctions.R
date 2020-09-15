@@ -14,6 +14,10 @@ selpop <- function() {
   pops[order(names(pops)) ]
 }
 
+selindic <- function() {
+c("Fbar", "totland_kg", "totdisc_kg", "SSB_kg")
+}
+
 selsce <- function() {
   loglikefns <- dir("data", "loglike.*RData", full.names = TRUE)
   gsub("^.*lst_loglike_weight_agg_|[.]RData", "", loglikefns)
