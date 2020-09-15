@@ -3,7 +3,7 @@ barplotTotLandingsPerSce <- function(type_of_column="pop", # or "disc"
                                      selected_pops=c(0, 1, 2, 3, 11, 23, 24, 26),
                                      group1= c(0, 1, 2, 3, 11, 23, 24, 26),
                                      selected_scenarios=selsce(),
-                                     scenarios_names=selsce(),
+                                     scenarios_names=names(selsce()),
                                      nby=5, firsty="2015", lasty="2019",
                                      a_width=3500, a_height=2000, black_and_white = FALSE, ylims = c(0,30)){
 
@@ -121,7 +121,6 @@ barplotTotLandingsPerSce <- function(type_of_column="pop", # or "disc"
   count <- 0
   for (sce in selected_scenarios){
     count <- count+1
-
     lst_loglike <- get(paste("lst_loglike_agg_weight", selected, sce, sep=''), env=.GlobalEnv)
 
 

@@ -1,4 +1,5 @@
 plot_popdyn <- function(sces=sces,
+                        scenarios_names=names(selsce()),
                         explicit_pops= explicit_pops,
                         sum_all=FALSE){
 
@@ -94,7 +95,7 @@ plot_popdyn <- function(sces=sces,
 
    } # end for pop
 
-   legend("topleft", box.lty = 0, legend = sces, fill = sapply(cols, function(x) x[1]))
+   legend("topleft", box.lty = 0, legend = scenarios_names, fill = sapply(cols, function(x) x[1]))
    ## fill = c(rgb( ramp1(seq(0, 1, length = 14)), max = 255, alpha=100)[1], rgb( ramp2(seq(0, 1, length = 14)), max = 255)[1]))
    graphics::box()
 

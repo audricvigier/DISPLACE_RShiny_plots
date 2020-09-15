@@ -20,7 +20,23 @@ c("F/Finit", "SSB/SSBinit", "TLand/TLandinit", "TDisc/TDiscinit", "Tac/Tacinit")
 
 selsce <- function() {
   loglikefns <- dir("data", "loglike.*RData", full.names = TRUE)
-  gsub("^.*lst_loglike_weight_agg_|[.]RData", "", loglikefns)
+  sces <- gsub("^.*lst_loglike_weight_agg_|[.]RData", "", loglikefns)
+  
+  
+  names(sces) <- sces
+   nms <-  c(scesizespectra="Size spectra Baseline", 
+                          scebaseline="- Predation", 
+                          scesizespectrastopifchok="+ Stop if choked",
+                          sceavchokpszpctrastopifchok="+ Avoidance + Stop if choked",
+                          sceavhtariffspszpctratariffs="+ Avoid High Tariffs",
+                          scetrgthtariffspszpctratariffs="+ Focus on High Tariffs",
+                          sceannualcodclosure ="Annual cod closure",
+                          scequartercodclosure ="Quarterly cod closure"                        
+                          )
+   
+  scenarios <- names(nms[match(names(sces),names(nms))])
+  names(scenarios) <- nms[match(names(sces),names(nms))] 
+  scenarios
 }
 
 selvar <- function() {

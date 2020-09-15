@@ -137,7 +137,7 @@ server <- function(input, output) {
       nby = 5,
       documsum = input$quantCumSum,
       a_set_of_scenarios = input$sel.sce,
-      the_scenario_names = sub("sce", "", input$sel.sce),
+      the_scenario_names =names(selsce()),
       name_set_of_sces = "setA",
       selected = "_selected_set1_",
       export = FALSE,
@@ -207,6 +207,7 @@ server <- function(input, output) {
   output$populationSizePlot <- renderPlot({
     req(input$sel.pop, input$sel.sce2, input$sel.sum.szgroups)
     plot_popdyn(sces = input$sel.sce2,
+                scenarios_names= names(selsce())[selsce()%in%input$sel.sce2],
                 explicit_pops = input$sel.pop,
                 sum_all = input$sel.sum.szgroups)
   }, height = function() {((length(input$sel.pop) + 1) %/% 2 ) * 300 })
@@ -214,6 +215,7 @@ server <- function(input, output) {
   output$annualIndicPlot <- renderPlot({
     req(input$sel.pop, input$sel.sce2, input$sel.indic)
     plot_annualindic(sces = input$sel.sce2,
+                 scenarios_names= names(selsce())[selsce()%in%input$sel.sce2],
                 explicit_pops = input$sel.pop,
                 indic = input$sel.indic)
   }, height = function() {((length(input$sel.pop) + 1) %/% 2 ) * 300 })
@@ -221,7 +223,7 @@ server <- function(input, output) {
 
   output$barplot_landis_perpop <- renderPlot({
     #warningPlot("Not implemented yet")
-    barplotTotLandingsPerSce(selected_scenarios = input$sel.sce2, scenarios_names = sub("sce", "", input$sel.sce2),
+    barplotTotLandingsPerSce(selected_scenarios = input$sel.sce2, scenarios_names = names(selsce())[selsce()%in%input$sel.sce2],
                              selected_pops = sub("pop.", "", input$sel.pop))
   })
 

@@ -1,4 +1,5 @@
 plot_annualindic <- function(sces=sces,
+                        scenarios_names=names(selsce()),
                         explicit_pops= explicit_pops,
                         indic="F"){
 
@@ -34,7 +35,7 @@ plot_annualindic <- function(sces=sces,
    
 
    outcome$sce <- factor(outcome$sce)
-   outcome$sce <- factor(outcome$sce, levels=sces, labels=  sces)
+   outcome$sce <- factor(outcome$sce, levels=sces, labels=  scenarios_names)
 
 
    # put in long format
