@@ -23,9 +23,14 @@ popdynscenarios <- gsub("^.*popdyn_|[.]RData", "", popdynfns)
 annualindicfns <- dir("data", "lst_annualindic.*RData", full.names = TRUE)
 annualindicscenarios <- gsub("^.*lst_annualindic_|[.]RData", "", popdynfns)
 
-
 ## Load all loglike and popdyn files
 for (f in c(loglikefns, popdynfns, annualindicfns)) load(f, envir = .GlobalEnv)
+
+## and read some tables
+fleetindicfns <- dir("data", "outcomes_all_simus_relative_to_baseline_sce_*", full.names = TRUE)
+fleetindicnames <- gsub("^.*outcomes_all_simus_|[.]txt", "", fleetindicfns)
+for (fi in 1: length(fleetindicfns)) assign(fleetindicnames[fi], read.table(fleetindicfns[fi], header=TRUE, sep=";"))
+
 
 ## Read population names
 ## popnames <- read.table("data/CelticSea44/pop_names_CelticSea.txt", header = TRUE); save("popnames", file = "data/popnames.Rdata")
@@ -97,8 +102,9 @@ ui <- dashboardPage(
               fluidRow(
               sbox(width = 6, plotOutput("catchTimeSeriesPlot"), title = "Catch development over time", status = "primary", solidHeader = TRUE),
               sbox(plotOutput("barplot_landis_perpop"), title = "Landings per population", solidHeader = TRUE, status = "primary"),
-              sbox(width = 6, plotOutput("populationSizePlot", height = "auto"), title = "Population size", status = "primary", solidHeader = TRUE),
-              sbox(width = 6, plotOutput("annualIndicPlot", height = "auto"), title = "Annual Indicator", status = "primary", solidHeader = TRUE))),
+              sbox(width = 6, plotOutput("populationSizePlot", height = "auto"), title = "Population size", status = "primary", solidHeader = TRUE),      
+              sbox(width = 6, plotOutput("annualIndicPlot", height = "auto"), title = "Annual Indicator", status = "primary", solidHeader = TRUE),
+              sbox(width = 6, plotOutput("fleetIndicatorsPlot", height = "auto"), title = "Fleet Indicators", status = "primary", solidHeader = TRUE))),
       tabItem("tab_plotlymap",
               plotlyOutput("cumulativeMaps"))
     )
@@ -203,7 +209,74 @@ server <- function(input, output) {
     }
   })
 
+  
+  output$fleetIndicatorsPlot <- renderPlot({
+    
+    selected <- "_selected_set1_"     
+    selected <- "_selected_set2_"     
+    selected <- "_selected_set3_"     
 
+    par(mar = c(6,4,3.5,0.9), xpd = TRUE)
+     
+    outcomes <- get(paste0("relative_to_baseline_sce_", selected))
+   
+    ## CAUTION: (not the same levels when reading or when using directly the obj in the env)
+    levels (outcomes$scenario) <-  c("sceavchok","sceavchokpszpctrastopifchok",
+                                   "sceavchokpszpectra",
+                                   "sceavhtariffspszpctratariffs",   "scebaseline",                   
+                                   "scesizespectrastopifchok", "scetrgthtariffspszpctratariffs")
+                                      
+
+    # add baseline at 0,0,0, etc.
+    baseline <- outcomes[outcomes$scenario == "scebaseline",]  # init
+    baseline$ratio_percent <-0
+    baseline$scenario <- "scesizespectra"
+    outcomes <- rbind.data.frame(baseline, outcomes)
+    outcomes$scenario <- factor(outcomes$scenario)
+
+    selected_variables <- c("feffort", "seffort", "nbtrip", "av_trip_duration", "fishing_based_cpue_explicit",
+                                       "totland_explicit", 
+                                        "sweptarea", "npv", "av_vpuf_month", "hoover")
+    outcomes           <- outcomes[outcomes$variable %in% selected_variables,]
+ 
+    outcomes$variable <- factor(outcomes$variable)
+    outcomes$variable <- factor(outcomes$variable, levels=selected_variables, labels= c( "F. effort", "S. effort", "Nb. of trips", "Trip duration",  "CPUE at fishing",
+                                                                                       "Tot landings",
+                                                                                        "Swept Area",  
+                                                                                        "NPV", "VPUF", "Income inequality"))
+ 
+    selected_scenarios <-    c("scesizespectra",
+                                    "sceavchokpszpectra",
+                                 "scesizespectrastopifchok",
+                                 "sceavchokpszpctrastopifchok",
+                                 "sceavhtariffspszpctratariffs",
+                                 "scetrgthtariffspszpctratariffs"                               
+                             )
+                            
+                                 
+    outcomes <- outcomes[outcomes$scenario %in%selected_scenarios,]
+    outcomes$scenario <- factor(outcomes$scenario)
+    outcomes$scenario <- factor(outcomes$scenario, levels=selected_scenarios, labels=  selected_scenarios
+                                )
+    library(ggplot2)
+    outcomes[outcomes$ratio_percent< -25, "ratio_percent"] <- -25
+    outcomes[outcomes$ratio_percent>25, "ratio_percent"] <- 25
+    p <- ggplot(outcomes[outcomes$ratio_percent>=-25 & outcomes$ratio_percent<=25,], aes(factor(variable), ratio_percent))  + geom_boxplot(outlier.shape=1)  + 
+             labs(x = "Indicators", y = "% ratio over the baseline") # + ylim(-20, 20) 
+    print(
+       p   + facet_wrap( ~ scenario, ncol=2, scales="free_y")    + theme_bw()+
+        theme(axis.text.x = element_text(angle = 45, hjust = 1), strip.text.x =element_text(size =10),  panel.grid.major = element_line(colour = grey(0.4),linetype =3 ),
+        strip.background = element_blank(),
+        panel.border = element_rect(colour = "black")) + 
+        geom_abline(intercept=0, slope=0, color="grey", lty=2)  + geom_boxplot(outlier.shape=NA)
+       )
+ 
+  
+ })
+     
+     
+     
+     
   output$populationSizePlot <- renderPlot({
     req(input$sel.pop, input$sel.sce2, input$sel.sum.szgroups)
     plot_popdyn(sces = input$sel.sce2,
