@@ -3,6 +3,8 @@
 ##         Francois Bastardie (fba@aqua.dtu.dk)
 
 library(maptools)
+library(vmstools)
+data(ICESareas)
 
 ## Functions ----
 distance <- function (lon, lat, lonRef, latRef)  # vmstools::distance()
@@ -106,8 +108,6 @@ makeCumulativeMap <- function(scedir,
     if (file.exists(f)) {
       this <- readRDS(f)
     } else {
-      library(vmstools)
-      data(ICESareas)
 
       ## Read in and preprocess the file (set small values to 0, add ICES areas, set to grid)
       this <- read.table(file=file.path(scedir, sce,

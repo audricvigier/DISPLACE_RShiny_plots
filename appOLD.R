@@ -23,12 +23,11 @@ loglikefns <- dir(outputLocation, "loglike.*RData", full.names = TRUE)
 loglikescenarios <- gsub("^.*agg_|[.]RData", "", loglikefns)
 popdynfns <- dir(outputLocation, "popdyn.*RData", full.names = TRUE)
 popdynscenarios <- gsub("^.*popdyn_|[.]RData", "", popdynfns)
-# annualindicfns <- dir(outputLocation, "lst_annualindic.*RData", full.names = TRUE)
-# annualindicscenarios <- gsub("^.*lst_annualindic_|[.]RData", "", popdynfns)
+annualindicfns <- dir(outputLocation, "lst_annualindic.*RData", full.names = TRUE)
+annualindicscenarios <- gsub("^.*lst_annualindic_|[.]RData", "", popdynfns)
 
 ## Load all loglike and popdyn files
-#for (f in c(loglikefns, popdynfns, annualindicfns)) load(f, envir = .GlobalEnv)
-for (f in c(loglikefns, popdynfns)) load(f, envir = .GlobalEnv)
+for (f in c(loglikefns, popdynfns, annualindicfns)) load(f, envir = .GlobalEnv)
 
 ## and read some tables
 fleetindicfns <- dir(outputLocation, "outcomes_all_simus_relative_to_baseline_sce_*", full.names = TRUE)

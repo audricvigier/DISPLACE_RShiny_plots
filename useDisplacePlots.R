@@ -46,7 +46,28 @@ general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displa
 ##################
 ###
 ###CONDITION THE OUTPUTS - WRITE FILES AND .RDATA WITH THE GETTERS
+###USE THESE CONDTIONNED OUTPUTS FOR MANY NON-SPATIAL PLOTS
 ###
 ##################
 
+#Landings, CPUE and economics per pop VID, metier, year, month. No spatial dimension
+getAggLoglikeFiles(general,explicit_pops=0:26,implicit_pops=NULL,what="weight")
+getAggLoglikeFiles(general,explicit_pops=0:26,implicit_pops=NULL,what="CPUE")
 
+#N IN THOUSANDS per group, time step and pop. No spatial dimension. Also does some plots. WHATEVER THESE PLOTS are supposed to be, redo them with tidyverse. (an SSB plot I've done better (check though); N per size class pop and month (redo with tidyverse)). ALso throws an error because legends are poorly managed.
+getAggPoplikeFiles(general=general,explicit_pops=0:26,the_baseline ="calib_multipliers_")
+  
+#Produce average spatial layers over simulations, at a specific time step. Generates a text file with the average layer. How may should I generate (time step, type ?)
+#a_type : anything in that list cumcatches cumcatches_with_threshold cumdiscards cumdiscardsratio cumftime cumsweptarea cumulcatches end inc impact impact_per_szgroup nbchoked start.
+getAggNodeLayerFiles(general, a_type="cumcatches", a_tstep="34321")
+
+#I don't use benthos
+getAggNodeBenthosLayerFiles(general,  a_tstep="34321")
+
+#Get indicators
+#makeCumulativeMap to create .rds files to be read, requires calls to getAggNodeLayerFiles. But is it reallyw hat I want? (maps not accounting for species or metiers)
+
+# get fleet stuff (outcomes_all_simus). is it interesting given that I don't intend to compare stochastic simulations?
+IBM_processoutput_plots_for_loglike_CelticSea.R
+expressAggLoglikeFilesIndicatorsRelativeToBaselineSce.R
+boxplotAggLoglikeFilesIndicators.R 
