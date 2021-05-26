@@ -5,9 +5,10 @@ ym2date <- function(x) {
          })
 }
 
-selpop <- function() {
-  nms <- names(lst_loglike_agg_weight_all_scebaseline[[1]])
+selpop <- function(what2, selected, a_baseline) {
+  nms <- names(get(paste("lst_loglike_agg_",what2, selected, a_baseline, sep=''))[[1]])
   pops <- nms[startsWith(nms, "pop.")]
+  pops = (unique(pops))
   if (length(pops) == length(popnames$spp)) {
     names(pops) <- popnames$spp
   }
@@ -18,25 +19,10 @@ selindic <- function() {
 c("F/Finit", "SSB/SSBinit", "TLand/TLandinit", "TDisc/TDiscinit", "Tac/Tacinit")
 }
 
-selsce <- function() {
-  loglikefns <- dir("data", "loglike.*RData", full.names = TRUE)
-  sces <- gsub("^.*lst_loglike_weight_agg_|[.]RData", "", loglikefns)
-  
-  
-  names(sces) <- sces
-   nms <-  c(scesizespectra="Size spectra Baseline", 
-                          scebaseline="- Predation", 
-                          scesizespectrastopifchok="+ Stop if choked",
-                          sceavchokpszpctrastopifchok="+ Avoidance + Stop if choked",
-                          sceavhtariffspszpctratariffs="+ Avoid High Tariffs",
-                          scetrgthtariffspszpctratariffs="+ Focus on High Tariffs",
-                          sceannualcodclosure ="Annual cod closure",
-                          scequartercodclosure ="Quarterly cod closure"                        
-                          )
-   
-  scenarios <- names(nms[match(names(sces),names(nms))])
-  names(scenarios) <- nms[match(names(sces),names(nms))] 
-  scenarios
+selsce <- function(popdynscenarios,scenames) {
+  attr(popdynscenarios,"names")=scenames
+ 
+  return(popdynscenarios)
 }
 
 selvar <- function() {

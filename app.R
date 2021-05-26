@@ -17,15 +17,20 @@ source("R-scripts/barplotLanDisPerScenario.R", local = TRUE)
 source("R-scripts/responseCurvesSBBandF.R", local = TRUE)
 
 sbox <- shinydashboard::box
-outputLocation <- "data"
+outputLocation <- "D:/DISPLACE_outputs/CelticSea/data"
+ybeg=2010
+yend=2020
 ## Find available RData files and pick out scenarios
 loglikefns <- dir(outputLocation, "loglike.*RData", full.names = TRUE)
 loglikescenarios <- gsub("^.*agg_|[.]RData", "", loglikefns)
 popdynfns <- dir(outputLocation, "popdyn.*RData", full.names = TRUE)
 popdynscenarios <- gsub("^.*popdyn_|[.]RData", "", popdynfns)
+scenames=c("Multipliers","Multipliers SCE")
+what2="weight"
+selected="_all_"
+a_baseline="calib_multipliers_"
 # annualindicfns <- dir(outputLocation, "lst_annualindic.*RData", full.names = TRUE)
 # annualindicscenarios <- gsub("^.*lst_annualindic_|[.]RData", "", popdynfns)
-
 ## Load all loglike and popdyn files
 #for (f in c(loglikefns, popdynfns, annualindicfns)) load(f, envir = .GlobalEnv)
 for (f in c(loglikefns, popdynfns)) load(f, envir = .GlobalEnv)
@@ -38,7 +43,7 @@ for (fi in 1: length(fleetindicfns)) assign(fleetindicnames[fi], read.table(flee
 
 ## Read population names
 #popnames <- read.table("data/CelticSea44/pop_names_CelticSea.txt", header = TRUE); save("popnames", file = "data/popnames.Rdata")
-load(file = "data/popnames.Rdata")
+load(file = paste(outputLocation,"/popnames.Rdata",sep=""))
 
 convertMenuItem <- function(tabName, mi) {
   mi$children[[1]]$attribs['data-toggle'] = "tab"
@@ -59,13 +64,13 @@ ui <- dashboardPage(
                                            selectInput("sel.mapquantity", "Select quantity", choices = selquantity(), multiple = FALSE, selectize = FALSE))),
                   convertMenuItem("ts",
                                   menuItem("Time series", tabName = "ts", icon = icon("chart-line"),
-                                           selectInput("sel.sce", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE),
+                                           selectInput("sel.sce", "Select scenarios", choices = selsce(popdynscenarios,scenames), selected = selsce(popdynscenarios,scenames), multiple = TRUE, selectize = FALSE),
                                            selectInput("sel.var", "Select a variable", choices = selvar(), selected = "gradva", multiple = FALSE),
                                            checkboxInput("quantCumSum", label = "Cumulative sum", value = TRUE))),
                   convertMenuItem("tab_landis_perpop",
                                   menuItem("Populations", tabName = "tab_landis_perpop", icon = icon("chart-bar"),
-                                           selectInput("sel.sce2", "Select scenarios", choices = selsce(), selected = selsce(), multiple = TRUE, selectize = FALSE),
-                                           selectInput("sel.pop", "Select populations", choices = selpop(), selected = c("pop.2", "pop.5", "pop.7", "pop.12"), multiple = TRUE, selectize = FALSE),
+                                           selectInput("sel.sce2", "Select scenarios", choices = selsce(popdynscenarios,scenames), selected = selsce(popdynscenarios,scenames), multiple = TRUE, selectize = FALSE),
+                                           selectInput("sel.pop", "Select populations", choices = selpop(what2, selected, a_baseline), selected = c("pop.2", "pop.5", "pop.7", "pop.12"), multiple = TRUE, selectize = FALSE),
                                            selectInput("sel.indic", "Select indicators", choices = selindic(), selected = c("F/Finit"), multiple = TRUE, selectize = FALSE),
                                            selectInput("sel.sum.szgroups", "Sum over size groups", choices = c(TRUE, FALSE), selected = TRUE,
                                                        multiple = FALSE, selectize = FALSE)))
@@ -117,9 +122,9 @@ ui <- dashboardPage(
 
 ## Server side logic ----
 server <- function(input, output) {
-  output$speciesTable <- renderTable(read.csv("data/species.csv"))
+  output$speciesTable <- renderTable(read.csv(paste(outputLocation,"/species.csv",sep="")))
   output$gearTable <- renderTable({
-    tbl <- read.csv("data/gears.csv")
+    tbl <- read.csv(paste(outputLocation,"/gears.csv",sep=""))
     names(tbl) <- c("Gear", "Code")
     tbl
   })
@@ -144,16 +149,16 @@ server <- function(input, output) {
     par(mar = c(4, 5, 1, 1))
     do_polygon_plot(
       a_variable = input$sel.var,
-      nby = 5,
+      ybeg = ybeg,
+      yend = yend,
       documsum = input$quantCumSum,
       a_set_of_scenarios = input$sel.sce,
-      the_scenario_names =names(selsce()),
-      name_set_of_sces = "setA",
-      selected = "_selected_set1_",
+      the_scenario_names =names(selsce(popdynscenarios,scenames)),
+      selected = selected,
       export = FALSE,
       a_ylab = switch(input$sel.var,
-                      gradva = "Accumulated Gross Value Added (million €)",
-                      rev_from_av_prices = "Income from landings (million €)",
+                      gradva = "Accumulated Gross Value Added (million EUR)",
+                      rev_from_av_prices = "Income from landings (million EUR)",
                       effort = "Effort",
                       nbtrip = "Number of trips",
                       totland = "Total landings",
@@ -213,16 +218,11 @@ server <- function(input, output) {
     }
   })
 
-
   output$fleetIndicatorsPlot <- renderPlot({
-
-    selected <- "_selected_set1_"
-    selected <- "_selected_set2_"
-    selected <- "_selected_set3_"
-
     ## par(mar = c(6,4,3.5,0.9), xpd = TRUE)
-
-    outcomes <- get(paste0("relative_to_baseline_sce_", selected))
+    
+    selOutcome=substr(selected,1,str_length(selected)-1)
+    outcomes <- get(paste0("relative_to_baseline_sce", selOutcome))
     ## CAUTION: (not the same levels when reading or when using directly the obj in the env)
     # levels(outcomes$scenario) <-  c("sceavchok","sceavchokpszpctrastopifchok",
     #                                "sceavchokpszpectra",
@@ -231,32 +231,21 @@ server <- function(input, output) {
 
 
     # add baseline at 0,0,0, etc.
-    baseline <- outcomes[outcomes$scenario == "scebaseline",]  # init
-    baseline$ratio_percent <- 0
-    baseline$scenario <- "scesizespectra"
+    baseline <- outcomes[outcomes$scenario == outcomes$scenario[1],]  # init
+    baseline$ratio_percent <-0
+    baseline$scenario <- "baseline"
     outcomes <- rbind.data.frame(baseline, outcomes)
     outcomes$scenario <- factor(outcomes$scenario)
 
-    selected_variables <- c("feffort", "seffort", "nbtrip", "av_trip_duration", "fishing_based_cpue_explicit",
-                                       "totland_explicit",
-                                        "sweptarea", "npv", "av_vpuf_month", "hoover")
+    selected_variables <- c("feffort", "seffort", "nbtrip", "av_trip_duration", "fishing_based_cpue_explicit","totland_explicit","sweptarea", "npv", "av_vpuf_month", "hoover")
     outcomes           <- outcomes[outcomes$variable %in% selected_variables,]
 
     outcomes$variable <- factor(outcomes$variable)
-    outcomes$variable <- factor(outcomes$variable, levels=selected_variables, labels= c( "F. effort", "S. effort", "Nb. of trips", "Trip duration",  "CPUE at fishing",
-                                                                                       "Tot landings",
-                                                                                        "Swept Area",
-                                                                                        "NPV", "VPUF", "Income inequality"))
-    outcomes$s
-    # selected_scenarios <-    c("scesizespectra",
-    #                                 "sceavchokpszpectra",
-    #                              "scesizespectrastopifchok",
-    #                              "sceavchokpszpctrastopifchok",
-    #                              "sceavhtariffspszpctratariffs",
-    #                              "scetrgthtariffspszpctratariffs"
-    #                          )
+    outcomes$variable <- factor(outcomes$variable, levels=selected_variables, labels= c( "F. effort", "S. effort", "Nb. of trips","Trip duration",  "CPUE at fishing","Tot landings","Swept Area","NPV", "VPUF", "Income inequality"))
+
+    
     selected_scenarios <- input$sel.sce2
-    nms <- names(selsce())[selsce() == input$sel.sce2]
+    nms <- names(selsce(popdynscenarios,scenames))[selsce(popdynscenarios,scenames) == input$sel.sce2]
 
     outcomes <- outcomes[outcomes$scenario %in% selected_scenarios,]
     #outcomes$scenario <- factor(outcomes$scenario)
@@ -275,13 +264,10 @@ server <- function(input, output) {
 
 }, height = function() {((length(input$sel.sce2) + 1) %/% 2 ) * 300 })
 
-
-
-
   output$populationSizePlot <- renderPlot({
     req(input$sel.pop, input$sel.sce2, input$sel.sum.szgroups)
     plot_popdyn(sces = input$sel.sce2,
-                scenarios_names= names(selsce())[selsce() %in% input$sel.sce2],
+                scenarios_names= names(selsce(popdynscenarios,scenames))[selsce(popdynscenarios,scenames) %in% input$sel.sce2],
                 explicit_pops = input$sel.pop,
                 sum_all = input$sel.sum.szgroups)
   }, height = function() {((length(input$sel.pop) + 1) %/% 2 ) * 300 })
@@ -289,7 +275,7 @@ server <- function(input, output) {
   # output$annualIndicPlot <- renderPlot({
   #   req(input$sel.pop, input$sel.sce2, input$sel.indic)
   #   plot_annualindic(sces = input$sel.sce2,
-  #                scenarios_names = names(selsce())[selsce() %in% input$sel.sce2],
+  #                scenarios_names = names(selsce(popdynscenarios,scenames))[selsce(popdynscenarios,scenames) %in% input$sel.sce2],
   #               explicit_pops = input$sel.pop,
   #               indic = input$sel.indic)
   # }, height = function() {length(input$sel.indic) * 150 + 150 })
@@ -297,8 +283,7 @@ server <- function(input, output) {
 
   output$barplot_landis_perpop <- renderPlot({
     #warningPlot("Not implemented yet")
-    barplotTotLandingsPerSce(selected_scenarios = input$sel.sce2, scenarios_names = names(selsce())[selsce()%in%input$sel.sce2],
-                             selected_pops = sub("pop.", "", input$sel.pop))
+    barplotTotLandingsPerSce(selected_scenarios = input$sel.sce2, scenarios_names = names(selsce(popdynscenarios,scenames))[selsce(popdynscenarios,scenames)%in%input$sel.sce2],selected_pops = sub("pop.", "", input$sel.pop))
   })
 
   output$cumulativeMaps <- renderPlotly({

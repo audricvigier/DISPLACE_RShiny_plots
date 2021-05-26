@@ -9,11 +9,13 @@
 #----------------------------------------------------------------
 
 rm(list=ls())
+library(lattice)         
+library(plyr)
 library(tidyverse)
 displaceplotLib="D:/work/Displace/displaceplot/R"
 for (file in list.files(displaceplotLib)) source(paste(displaceplotLib,file,sep="/"))
-shinyLib="D:/work/Displace/Shiny/R-scripts"
-for (file in list.files(shinyLib,pattern=".R")) source(paste(shinyLib,file,sep="/"))
+shinyLib="D:/work/Displace/DISPLACE_RShiny_plots/R-scripts"
+for (file in list.files(shinyLib,pattern=".R")[-c(4)]) source(paste(shinyLib,file,sep="/")) # Issue with "makeStudyAreaMap.R" 
 for (file in list.files(paste(shinyLib,"/fromFrancois"),pattern=".R")) source(paste(paste(shinyLib,"/fromFrancois"),file,sep="/"))
 
 ##################
@@ -67,7 +69,20 @@ getAggNodeBenthosLayerFiles(general,  a_tstep="34321")
 #Get indicators
 #makeCumulativeMap to create .rds files to be read, requires calls to getAggNodeLayerFiles. But is it reallyw hat I want? (maps not accounting for species or metiers)
 
-# get fleet stuff (outcomes_all_simus). is it interesting given that I don't intend to compare stochastic simulations?
-IBM_processoutput_plots_for_loglike_CelticSea.R
-expressAggLoglikeFilesIndicatorsRelativeToBaselineSce.R
-boxplotAggLoglikeFilesIndicators.R 
+# get fleet stuff (outcomes_all_simus). Is it that interesting given that I don't intend to compare stochastic simulations?
+# create metier-wise indicators TO BE DONE)
+#This call is equivalent to expressAggLoglikeFilesIndicatorsRelativeToBaselineSce.R, but better implemented
+getSimusOutcomes(general,a_baseline="calib_multipliers_",explicit_pops=0:26,selected="_met_")
+#Does a bar plot on the previously derived indicators
+#This call is equivalent to boxplotAggLoglikeFilesIndicators.R, making it deprectaed
+doOutcomesbarPlot(selected="all",selected_variables = c("feffort", "seffort", "nbtrip", "av_trip_duration", "fishing_based_cpue_explicit", "totland_explicit", "sweptarea", "npv", "av_vpuf_month", "hoover"),selected_scenarios= c("baseline","calib_multipliers_SCE_"))
+    
+    
+##################
+###
+###TEST FUNCTIONS USED FOR THE APP
+###
+##################
+  
+  
+

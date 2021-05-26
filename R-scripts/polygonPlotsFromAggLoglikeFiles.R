@@ -39,12 +39,27 @@
 #'                                            )
 #'
 #'   }
+a_variable="gradva"
+nby=5
+a_set_of_scenarios=general$namefolderoutput
+the_scenario_names= general$namefolderoutput
+selected=selected
+export=FALSE
+documsum = FALSE
+a_xlab="# months"
+a_ylab="Accumulated Gross Added Value (millions Euro)"
+add_legend=FALSE
+color_legend= c(rgb(94/255,79/255,162/255,0.5), rgb (158/255,1/255,66/255,0.5),
+                rgb(140/255,81/255,10/255,0.4), rgb(1,0,0,0.5), rgb(0,0.5,1,0.5), rgb(0,1,0.5,0.5), rgb(1,0,0.5,0.5), rgb(0,0,0,0.2))
+a_width = 3500
+a_height = 1000
+
 do_polygon_plot <- function(
   a_variable="gradva",
-  nby=5,
-  a_set_of_scenarios=general$namefolderoutput[1:3],
-  the_scenario_names= general$namefolderoutput[1:3],
-  name_set_of_sces= "setA",
+  ybeg=2010,
+  yend=2020,
+  a_set_of_scenarios=general$namefolderoutput,
+  the_scenario_names= general$namefolderoutput,
   selected=selected,
   export=FALSE,
   documsum = FALSE,
@@ -63,7 +78,7 @@ do_polygon_plot <- function(
   obj <- lapply(sce, function(x) get(paste("lst_loglike_agg_weight", selected, x, sep=''), env=.GlobalEnv))
 
   # caution: complete missing records if 0s in given year.month
-  complete_all_year_month <- function (x, years_span=2015:(2015+nby-1)){
+  complete_all_year_month <- function (x, years_span=ybeg:yend){
     allcombi              <- expand.grid(month=sprintf("%02d", 1:12), year=years_span)
     allcombi$year.month   <- paste0(allcombi$year,".",allcombi$month)
     allcombi              <- cbind.data.frame(year.month=allcombi$year.month,  matrix(0, ncol=ncol(x)-1))
@@ -76,17 +91,17 @@ do_polygon_plot <- function(
   }
 
   obj <- lapply(obj, function(o) lapply(o, complete_all_year_month))
-  simu_names <- Reduce(intersect, lapply(obj, names))
+  simu_names <- 1:length(obj[[1]])#a_set_of_scenarios#Reduce(intersect, lapply(obj, names))
 
   ## a nice quantile plot for profit
   #plot(cumsum(loglike_Scenario1_save[loglike_Scenario1_save$simu=="simu2",]$gradva), type="l", col=2)
   mat <- lapply(seq_along(obj), function(i) {
-    res <- matrix(NA, nrow=length(simu_names),  ncol=nby*12)
+    res <- matrix(NA, nrow=length(simu_names),  ncol=(yend-ybeg+1)*12)
     rownames(res) <- simu_names
     return(res)
   })
 
-  for (sim in simu_names){
+  for (sim in 1:length(obj[[1]])){
     for (i in seq_along(mat)) {
       mat[[i]][sim, ] <- documsum(as.numeric(obj[[i]][[sim]][,a_variable]) )[1:dim(mat[[i]])[2]]
     }
@@ -95,7 +110,7 @@ do_polygon_plot <- function(
   sim_ref <- names(which.max (apply(mat[[1]], 1, function(x) sum(x, na.rm=TRUE))) )
 
   er <- try(   {
-    qs <- lapply(mat, function(m) apply(m[,1:(nby*12)], 2, quantile, probs=c(0.05, 0.95), na.rm=TRUE))
+    qs <- lapply(mat, function(m) apply(m[,1:((yend-ybeg+1)*12)], 2, quantile, probs=c(0.05, 0.95), na.rm=TRUE))
     ylim <- range(unlist(qs)) / 1e6
     xs <-  ym2date(obj[[1]][[1]]$year.month)
     plot(xs, obj[[1]][[1]][, a_variable], ylim = ylim, type = "n", xlab = "Year", ylab = "", axes = FALSE)
@@ -158,7 +173,6 @@ polygonPlotsFromAggLoglikeFiles <- function(general=general,
       nby=nby,
       a_set_of_scenarios= selected_scenarios,
       the_scenario_names= selected_scenarios,
-      name_set_of_sces= "setA",
       selected="_selected_set1_",
       export=FALSE,
       a_xlab="# months",
