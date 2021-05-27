@@ -1,8 +1,10 @@
 
+
+library(data.table)
 library(shiny)
 library(shinydashboard)
 library(plotly)
-library(ggplot2)
+library(tidyverse)
 
 setwd("D:/work/Displace/DISPLACE_RShiny_plots")
 shinyOptions(shiny.autoreload = TRUE)
@@ -15,6 +17,7 @@ source("R-scripts/polygonPlotsFromPopDynFiles.R", local = TRUE)
 source("R-scripts/helperFunctions.R", local = TRUE)
 source("R-scripts/barplotLanDisPerScenario.R", local = TRUE)
 source("R-scripts/responseCurvesSBBandF.R", local = TRUE)
+source("R-scripts/setGeneralVariable.R", local = TRUE)
 
 sbox <- shinydashboard::box
 outputLocation <- "D:/DISPLACE_outputs/CelticSea/data"
@@ -50,6 +53,21 @@ convertMenuItem <- function(tabName, mi) {
   mi$children[[1]]$attribs['data-value'] = tabName
   mi
 }
+
+general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displace/", paste0("DISPLACE_input_gis_","CelticSea")),
+                                      pathToDisplaceInputs = file.path("D:/work/Displace/", paste0("DISPLACE_input_","CelticSea")),
+                                      pathToOutputs =file.path("D:","DISPLACE_outputs"),
+                                      caseStudy="CelticSea",
+                                      iGraph=3,
+                                      iYear="2010", # Beginning of time series
+                                      iYearEnd="2020", # End of time series
+                                      iCountry=NULL, #???
+                                      nbPops=27,
+                                      nbSzgroup=14,
+                                      theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
+                                      nbSimus=20,
+                                      useSQLite=FALSE)
+
 
 ## User interface ----
 ui <- dashboardPage(
@@ -144,7 +162,7 @@ server <- function(input, output) {
 
   })
 
-    output$linePlot <- renderPlot({
+  output$linePlot <- renderPlot({
     req(input$sel.var, input$sel.sce)
     par(mar = c(4, 5, 1, 1))
     do_polygon_plot(
@@ -283,7 +301,7 @@ server <- function(input, output) {
 
   output$barplot_landis_perpop <- renderPlot({
     #warningPlot("Not implemented yet")
-    barplotTotLandingsPerSce(selected_scenarios = input$sel.sce2, scenarios_names = names(selsce(popdynscenarios,scenames))[selsce(popdynscenarios,scenames)%in%input$sel.sce2],selected_pops = sub("pop.", "", input$sel.pop))
+    barplotTotLandingsPerSce(general=general,type_of_column="pop", selected="_all_",selected_scenarios = input$sel.sce2, scenarios_names = names(selsce(popdynscenarios,scenames))[selsce(popdynscenarios,scenames)%in%input$sel.sce2],selected_pops = sub("pop.", "", input$sel.pop), firsty="2010", lasty="2012")
   })
 
   output$cumulativeMaps <- renderPlotly({
