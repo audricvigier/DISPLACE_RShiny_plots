@@ -148,31 +148,31 @@ for(sce in general$namefolderoutput){
   save(polygonsRTI,polygonsICES,RTIrectangle,icesquarterrectangle,VesselVmsLikeCond,file=paste(general$main.path,general$case_study,sce,"output/forEffortPlots.Rdata",sep="/"))
   
   for(numMet in c(NA,unique(polygonsRTI$metierId))){
-    getmapEffortRTIAll(polygonsRTI,monthNum=NA,idMetier=numMet,gif=T)
-    getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=T)
-    getmapEffortNodeAll(VesselVmsLikeCond,monthNum=NA,idMetier=numMet,gif=T)
+    getmapEffortRTIAll(polygonsRTI,monthNum=NA,idMetier=numMet,gif=T,sce)
+    getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=T,sce)
+    getmapEffortNodeAll(VesselVmsLikeCond,monthNum=NA,idMetier=numMet,gif=T,sce)
   }
   for(numMet in c(NA,unique(polygonsRTI$metierId))){
     if(!is.na(numMet)){
       png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_RTIcell_AllTime_",numMet,".png",sep=""),height=800,width=800,units="px",res=100)
-      print(getmapEffortRTIAll(polygonsRTI,monthNum=NA,idMetier=numMet,gif=F))
+      print(getmapEffortRTIAll(polygonsRTI,monthNum=NA,idMetier=numMet,gif=F,sce))
       dev.off()
       png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_ICEScell_AllTime_",numMet,".png",sep=""),height=800,width=800,units="px",res=100)
-      print(getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=F))
+      print(getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=F,sce))
       dev.off()
       png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_AllTime_",numMet,".png",sep=""),height=800,width=800,units="px",res=100)
-      print(getmapEffortNodeAll(VesselVmsLikeCond,monthNum=NA,idMetier=numMet,gif=F))
+      print(getmapEffortNodeAll(VesselVmsLikeCond,monthNum=NA,idMetier=numMet,gif=F,sce))
       dev.off()
     }
     if(is.na(numMet)){
       png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_RTIcell_AllAll.png",sep=""),height=800,width=800,units="px",res=100)
-      print(getmapEffortRTIAll(polygonsRTI,monthNum=NA,idMetier=numMet,gif=F))
+      print(getmapEffortRTIAll(polygonsRTI,monthNum=NA,idMetier=numMet,gif=F,sce))
       dev.off()
       png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_ICEScell_AllAll.png",sep=""),height=800,width=800,units="px",res=100)
-      print(getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=F))
+      print(getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=F,sce))
       dev.off()
       png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_AllAll.png",sep=""),height=800,width=800,units="px",res=100)
-      print(getmapEffortNodeAll(VesselVmsLikeCond,monthNum=NA,idMetier=numMet,gif=F))
+      print(getmapEffortNodeAll(VesselVmsLikeCond,monthNum=NA,idMetier=numMet,gif=F,sce))
       dev.off()
     }
   }

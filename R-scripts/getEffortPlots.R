@@ -20,8 +20,9 @@
 # library(gganimate)
 # library(grDevices)
 # library(viridis) # colour-blind friendly palettes
-#library(displaceplot) # Some functions exist to produce some plots, but not the ones I'm looking for.
-#library(help=displaceplot)
+# library(displaceplot) # Some functions exist to produce some plots, but not the ones I'm looking for.
+# library(help=displaceplot)
+# source("D:/work/Displace/DISPLACE_RShiny_plots/R-scripts/setGeneralVariable.R", local = TRUE)
 
 ##################
 ###
@@ -29,20 +30,21 @@
 ###
 ##################
 
-general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displace/", paste0("DISPLACE_input_gis_","CelticSea")),
-                                      pathToDisplaceInputs = file.path("D:/work/Displace/", paste0("DISPLACE_input_","CelticSea")),
-                                      pathToOutputs =file.path("D:","DISPLACE_outputs"),
-                                      caseStudy="CelticSea",
-                                      iGraph=3,
-                                      iYear="2010", # Beginning of time series
-                                      iYearEnd="2020", # End of time series
-                                      iCountry=NULL, #???
-                                      nbPops=27,
-                                      nbSzgroup=14,
-                                      theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
-                                      nbSimus=20,
-                                      useSQLite=FALSE)
+# general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displace/", paste0("DISPLACE_input_gis_","CelticSea")),
+#                                       pathToDisplaceInputs = file.path("D:/work/Displace/", paste0("DISPLACE_input_","CelticSea")),
+#                                       pathToOutputs =file.path("D:","DISPLACE_outputs"),
+#                                       caseStudy="CelticSea",
+#                                       iGraph=3,
+#                                       iYear="2010", # Beginning of time series
+#                                       iYearEnd="2020", # End of time series
+#                                       iCountry=NULL, #???
+#                                       nbPops=27,
+#                                       nbSzgroup=14,
+#                                       theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
+#                                       nbSimus=20,
+#                                       useSQLite=FALSE)
 
+#load(file=paste(general$main.path,general$case_study,general$namefolderoutput[1],"output/forEffortPlots.Rdata",sep="/"))
 ##################
 ###
 ###END INPUTS
@@ -62,7 +64,7 @@ general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displa
 ##################
 
 # Per node
-getmapEffortNodeAll=function(VesselVmsLikeCond,gif=FALSE,idMetier=0,monthNum=1){ # 3 sec per metier for one year
+getmapEffortNodeAll=function(VesselVmsLikeCond,gif=FALSE,idMetier=0,monthNum=1,scename=""){ # 3 sec per metier for one year
   plotrange = rbind(range(VesselVmsLikeCond$Long),range(VesselVmsLikeCond$Lat))
   if(is.na(idMetier)) {
     VesselVmsLikeCond$metierId="whole fishery"
@@ -80,6 +82,7 @@ getmapEffortNodeAll=function(VesselVmsLikeCond,gif=FALSE,idMetier=0,monthNum=1){
     filter(effort>0)
   
   if(!gif){
+    maxScale = max(VesselVmsLikeCond$effort)
     VesselVmsLikeCond = VesselVmsLikeCond %>% 
       filter(month==monthNum)  # Still selects the whole fishery or all time steps if that's what's wanted
   }
@@ -89,8 +92,8 @@ getmapEffortNodeAll=function(VesselVmsLikeCond,gif=FALSE,idMetier=0,monthNum=1){
     mapEffortNode = VesselVmsLikeCond %>% 
       ggplot(aes(x=Long,y=Lat,colour=effort, group=seq_along(month)))+
       geom_point(size=1)+
-      scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
-      labs(x="Longitude",y="Latitude",colour="Effort\n(hours)",title=paste("Fishing effort month {frame} ", " metier ",idMetier ,sep=""))+
+      scale_colour_gradientn(colours = viridis(7),limits=c(0,maxScale))+
+      labs(x="Longitude",y="Latitude",colour="Effort\n(hours)",title=paste("Fishing effort month {frame} ", " metier ",idMetier,"\n",scename,sep=""))+
       expand_limits(x=plotrange[1,],y=plotrange[2,])+
       theme_minimal()+
       theme(axis.title.y=element_text(angle=0,vjust=0.5))+ 
@@ -103,12 +106,11 @@ getmapEffortNodeAll=function(VesselVmsLikeCond,gif=FALSE,idMetier=0,monthNum=1){
   }
   
   if(!gif){
-    maxScale = max(VesselVmsLikeCond$effort)
     mapEffortNode =VesselVmsLikeCond %>% 
       ggplot(aes(x=Long,y=Lat,colour=effort))+
       geom_point(size=1)+
-      scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
-      labs(x="Longitude",y="Latitude",colour="Effort\n(hours)",title=paste("Fishing effort month ",monthNum," metier ",idMetier,sep=""))+
+      scale_colour_gradientn(colours = viridis(7),limits=c(0,maxScale))+
+      labs(x="Longitude",y="Latitude",colour="Effort\n(hours)",title=paste("Fishing effort month ",monthNum," metier ",idMetier,"\n",scename,sep=""))+
       expand_limits(x=plotrange[1,],y=plotrange[2,])+
       theme_minimal()+
       theme(axis.title.y=element_text(angle=0,vjust=0.5))
@@ -131,7 +133,7 @@ preconditionRTI = function(VesselVmsLikeCond,RTIrectangle){
   return(polygonsRTI)
 }
                             
-getmapEffortRTIAll=function(polygonsRTI,gif=FALSE,idMetier=0,monthNum=1){ #if metier is NA : do the whole fishery instead
+getmapEffortRTIAll=function(polygonsRTI,gif=FALSE,idMetier=0,monthNum=1,scename=""){ #if metier is NA : do the whole fishery instead
 
   plotrange = rbind(range(polygonsRTI$x),range(polygonsRTI$y))
   if(is.na(idMetier)) {
@@ -150,6 +152,7 @@ getmapEffortRTIAll=function(polygonsRTI,gif=FALSE,idMetier=0,monthNum=1){ #if me
     filter(effort>0)
   
   if(!gif){
+    maxScale = max(polygonsRTI$effort)
     polygonsRTI = polygonsRTI %>% 
       filter(month==monthNum)  # Still selects the whole fishery or all time steps if that's what's wanted
   }
@@ -160,7 +163,7 @@ getmapEffortRTIAll=function(polygonsRTI,gif=FALSE,idMetier=0,monthNum=1){ #if me
       ggplot(aes(x=x,y=y,fill=effort, group=seq_along(month)))+
       geom_tile(colour="black",width=0.5,height=0.25)+
       scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
-      labs(x="Longitude",y="Latitude",fill="Effort\n(hours)",title=paste("Fishing effort month {frame} ", " metier ",idMetier ,sep=""))+
+      labs(x="Longitude",y="Latitude",fill="Effort\n(hours)",title=paste("Fishing effort month {frame} ", " metier ",idMetier,"\n",scename ,sep=""))+
       expand_limits(x=plotrange[1,],y=plotrange[2,])+
       theme_minimal()+
       theme(axis.title.y=element_text(angle=0,vjust=0.5))+ 
@@ -173,12 +176,11 @@ getmapEffortRTIAll=function(polygonsRTI,gif=FALSE,idMetier=0,monthNum=1){ #if me
   }
   
   if(!gif){
-    maxScale = max(polygonsRTI$effort)
       mapEffortRTITemp =polygonsRTI %>% 
         ggplot(aes(x=x,y=y,fill=effort))+
         geom_tile(colour="black",width=0.5,height=0.25)+
         scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
-        labs(x="Longitude",y="Latitude",fill="Effort\n(hours)",title=paste("Fishing effort month ",monthNum," metier ",idMetier,sep=""))+
+        labs(x="Longitude",y="Latitude",fill="Effort\n(hours)",title=paste("Fishing effort month ",monthNum," metier ",idMetier,"\n",scename,sep=""))+
         expand_limits(x=plotrange[1,],y=plotrange[2,])+
         theme_minimal()+
         theme(axis.title.y=element_text(angle=0,vjust=0.5))
@@ -204,7 +206,7 @@ preconditionICES = function(VesselVmsLikeCond,icesquarterrectangle){
   return(polygonsICES)
 }
 
-getmapEffortICESAll=function(polygonsICES,gif=FALSE,idMetier=0,monthNum=1){ # 3 sec per metier for one year
+getmapEffortICESAll=function(polygonsICES,gif=FALSE,idMetier=0,monthNum=1,scename=""){ # 3 sec per metier for one year
   # monthNum=NA
   # idMetier=NA
   # gif=F
@@ -225,6 +227,7 @@ getmapEffortICESAll=function(polygonsICES,gif=FALSE,idMetier=0,monthNum=1){ # 3 
     filter(effort>0)
   
   if(!gif){
+    maxScale = max(polygonsICES$effort)
     polygonsICES = polygonsICES %>% 
       filter(month==monthNum)  # Still selects the whole fishery or all time steps if that's what's wanted
   }
@@ -235,7 +238,7 @@ getmapEffortICESAll=function(polygonsICES,gif=FALSE,idMetier=0,monthNum=1){ # 3 
       ggplot(aes(x=x,y=y,fill=effort, group=seq_along(month)))+
       geom_tile(colour="black",width=1,height=0.5)+
       scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
-      labs(x="Longitude",y="Latitude",fill="Effort\n(hours)",title=paste("Fishing effort month {frame} ", " metier ",idMetier ,sep=""))+
+      labs(x="Longitude",y="Latitude",fill="Effort\n(hours)",title=paste("Fishing effort month {frame} ", " metier ",idMetier,"\n",scename ,sep=""))+
       expand_limits(x=plotrange[1,],y=plotrange[2,])+
       theme_minimal()+
       theme(axis.title.y=element_text(angle=0,vjust=0.5))+ 
@@ -248,12 +251,11 @@ getmapEffortICESAll=function(polygonsICES,gif=FALSE,idMetier=0,monthNum=1){ # 3 
   }
   
   if(!gif){
-    maxScale = max(polygonsICES$effort)
     mapEffortICESTemp =polygonsICES %>% 
       ggplot(aes(x=x,y=y,fill=effort))+
       geom_tile(colour="black",width=1,height=0.5)+
       scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
-      labs(x="Longitude",y="Latitude",fill="Effort\n(hours)",title=paste("Fishing effort month ",monthNum," metier ",idMetier,sep=""))+
+      labs(x="Longitude",y="Latitude",fill="Effort\n(hours)",title=paste("Fishing effort month ",monthNum," metier ",idMetier,"\n",scename,sep=""))+
       expand_limits(x=plotrange[1,],y=plotrange[2,])+
       theme_minimal()+
       theme(axis.title.y=element_text(angle=0,vjust=0.5))
@@ -261,3 +263,6 @@ getmapEffortICESAll=function(polygonsICES,gif=FALSE,idMetier=0,monthNum=1){ # 3 
   }
 }
 
+# getmapEffortNodeAll(VesselVmsLikeCond,gif=FALSE,idMetier=10,monthNum=1)
+# getmapEffortRTIAll(polygonsRTI,gif=FALSE,idMetier=NA,monthNum=10)
+# getmapEffortICESAll(polygonsICES,gif=FALSE,idMetier=NA,monthNum=10)

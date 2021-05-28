@@ -1,16 +1,21 @@
 
-
+library(cowplot)
 library(data.table)
+library(gganimate)
+library(grid)
+library(gridExtra)
 library(shiny)
 library(shinydashboard)
 library(plotly)
 library(tidyverse)
+library(viridis)
 
 setwd("D:/work/Displace/DISPLACE_RShiny_plots")
 shinyOptions(shiny.autoreload = TRUE)
 shinyOptions(shiny.launch.browser = TRUE)
 
 ## Source R scripts
+source("R-scripts/getEffortPlots.R", local = TRUE)
 source("R-scripts/mapAverageLayerFiles.R", local = TRUE)
 source("R-scripts/polygonPlotsFromAggLoglikeFiles.R", local = TRUE)
 source("R-scripts/polygonPlotsFromPopDynFiles.R", local = TRUE)
@@ -37,6 +42,14 @@ a_baseline="calib_multipliers_"
 ## Load all loglike and popdyn files
 #for (f in c(loglikefns, popdynfns, annualindicfns)) load(f, envir = .GlobalEnv)
 for (f in c(loglikefns, popdynfns)) load(f, envir = .GlobalEnv)
+
+effortMaps = list()
+for (sce in popdynscenarios){
+  load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forEffortPlots.Rdata",sep=""))
+  effortMaps[[sce]]$polygonsICES=polygonsICES
+  effortMaps[[sce]]$polygonsRTI=polygonsRTI
+  effortMaps[[sce]]$VesselVmsLikeCond=VesselVmsLikeCond
+}
 
 ## and read some tables
 fleetindicfns <- dir(outputLocation, "outcomes_all_simus_relative_to_baseline_sce_*", full.names = TRUE)
@@ -77,9 +90,11 @@ ui <- dashboardPage(
       sidebarMenu(id = "menu",
                   convertMenuItem("intro",
                                   menuItem("Model info", tabName = "intro", icon = icon("info"), startExpanded = TRUE)),
+                  #convertMenuItem("map", menuItem("Maps", tabName = "map", icon = icon("map"),selectInput("sel.mapquantity", "Select quantity", choices = selquantity(), multiple = FALSE, selectize = FALSE))), # cumulativeCatch, discards, ftime, swept area
                   convertMenuItem("map",
                                   menuItem("Maps", tabName = "map", icon = icon("map"),
-                                           selectInput("sel.mapquantity", "Select quantity", choices = selquantity(), multiple = FALSE, selectize = FALSE))),
+                                           sliderInput("selmap.month", "Time step (month)", min = 1, max = ((yend-ybeg+1)*12),value=1, step=1, ticks = T, animate = T),selectInput("selmap.metier", "Métier", choices=c("All",0:16)),
+                                           selectInput("selmap.scale", "Aggregation scale", choices=c("Node","ICES rectangle","RTI rectangle")))), # cumulativeCatch, discards, ftime, swept area
                   convertMenuItem("ts",
                                   menuItem("Time series", tabName = "ts", icon = icon("chart-line"),
                                            selectInput("sel.sce", "Select scenarios", choices = selsce(popdynscenarios,scenames), selected = selsce(popdynscenarios,scenames), multiple = TRUE, selectize = FALSE),
@@ -146,20 +161,47 @@ server <- function(input, output) {
     names(tbl) <- c("Gear", "Code")
     tbl
   })
-
+  
+  mapsOnAgrid = function(effortMaps,scale,metierNum,monthNum,scenames){
+    # scale="Node" #input$selmap.scale
+    # monthNum=2# input$selmap.month
+    # metierNum=NA #metierNum
+    # scenames=c("A","B")
+    plotList=list()
+    i=0
+    for(dataset in effortMaps){
+      i=i+1
+      if(scale=="Node"){
+        plotList[[i]]=as_grob(getmapEffortNodeAll(dataset$VesselVmsLikeCond,gif=FALSE,idMetier=metierNum,monthNum,scenames[i]))
+      }
+      if(scale=="ICES rectangle"){
+        plotList[[i]]=as_grob(getmapEffortICESAll(dataset$polygonsICES,gif=FALSE,idMetier=metierNum,monthNum,scenames[i]))
+      }
+      if(scale=="RTI rectangle"){
+        plotList[[i]]=as_grob(getmapEffortRTIAll(dataset$polygonsRTI,gif=FALSE,idMetier=metierNum,monthNum,scenames[i]))
+      }
+    }
+    numCols = 4
+    if(length(plotList)<4) numCols = length(plotList)
+    return(grid.arrange(grobs=plotList,ncol=numCols))
+  }
+  
   output$cumulativeMap <- renderPlot({
-    # scedir <- "data/CelticSea44/"
-     scedir <- ""
-    # scenarios <- dir(scedir, "^sce[^_]*")
-    # m <- regexpr("sce[^_]*", scenarios)
-    # scenarios <- unique(regmatches(scenarios, m))
-    first <- function(x) x[1]
-    scenarios <- unique(sapply(strsplit(dir("output", ".*Rds"), split = "_"), first))
-    outdir <- "output"
-
-    makeCumulativeMap(scedir = scedir, outdir = outdir, scenarios = scenarios,
-                      a_type = input$sel.mapquantity, in_relative = FALSE)
-
+    # # scedir <- "data/CelticSea44/"
+    #  scedir <- ""
+    # # scenarios <- dir(scedir, "^sce[^_]*")
+    # # m <- regexpr("sce[^_]*", scenarios)
+    # # scenarios <- unique(regmatches(scenarios, m))
+    # first <- function(x) x[1]
+    # scenarios <- unique(sapply(strsplit(dir("output", ".*Rds"), split = "_"), first))
+    # outdir <- "output"
+    # 
+    # makeCumulativeMap(scedir = scedir, outdir = outdir, scenarios = scenarios,a_type = input$sel.mapquantity, in_relative = FALSE)
+    metierNum=input$selmap.metier
+    if(metierNum=="All") metierNum = NA
+    plot2render=mapsOnAgrid(effortMaps,scale=input$selmap.scale,metierNum,monthNum=input$selmap.month,attr(effortMaps,"names"))
+    
+    plot2render
   })
 
   output$linePlot <- renderPlot({
