@@ -15,6 +15,7 @@ shinyOptions(shiny.autoreload = TRUE)
 shinyOptions(shiny.launch.browser = TRUE)
 
 ## Source R scripts
+source("R-scripts/getBiomassPlots.R", local = TRUE)
 source("R-scripts/getEffortPlots.R", local = TRUE)
 source("R-scripts/mapAverageLayerFiles.R", local = TRUE)
 source("R-scripts/polygonPlotsFromAggLoglikeFiles.R", local = TRUE)
@@ -43,12 +44,16 @@ a_baseline="calib_multipliers_"
 #for (f in c(loglikefns, popdynfns, annualindicfns)) load(f, envir = .GlobalEnv)
 for (f in c(loglikefns, popdynfns)) load(f, envir = .GlobalEnv)
 
-effortMaps = list()
+biomassMaps = effortMaps = list()
 for (sce in popdynscenarios){
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forEffortPlots.Rdata",sep=""))
   effortMaps[[sce]]$polygonsICES=polygonsICES
   effortMaps[[sce]]$polygonsRTI=polygonsRTI
   effortMaps[[sce]]$VesselVmsLikeCond=VesselVmsLikeCond
+  load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forBiomassPlots.Rdata",sep=""))
+  biomassMaps[[sce]]$interimMap=interimMap
+  biomassMaps[[sce]]$interimMapRTI=interimMapRTI
+  biomassMaps[[sce]]$interimMapICES=interimMapICES
 }
 
 ## and read some tables
@@ -93,7 +98,10 @@ ui <- dashboardPage(
                   #convertMenuItem("map", menuItem("Maps", tabName = "map", icon = icon("map"),selectInput("sel.mapquantity", "Select quantity", choices = selquantity(), multiple = FALSE, selectize = FALSE))), # cumulativeCatch, discards, ftime, swept area
                   convertMenuItem("map",
                                   menuItem("Maps", tabName = "map", icon = icon("map"),
-                                           sliderInput("selmap.month", "Time step (month)", min = 1, max = ((yend-ybeg+1)*12),value=1, step=1, ticks = T, animate = T),selectInput("selmap.metier", "Métier", choices=c("All",0:16)),
+                                           selectInput("selmap.variable", "Variable", choices=c("Effort","Biomass")),
+                                           sliderInput("selmap.month", "Time step (month)", min = 1, max = ((yend-ybeg+1)*12),value=1, step=1, ticks = T, animate = T),
+                                           selectInput("selmap.metier", "Métier", choices=c("All",0:16)),
+                                           selectInput("selmap.pop", "Population", choices=c(0:26)),
                                            selectInput("selmap.scale", "Aggregation scale", choices=c("Node","ICES rectangle","RTI rectangle")))), # cumulativeCatch, discards, ftime, swept area
                   convertMenuItem("ts",
                                   menuItem("Time series", tabName = "ts", icon = icon("chart-line"),
@@ -162,7 +170,7 @@ server <- function(input, output) {
     tbl
   })
   
-  mapsOnAgrid = function(effortMaps,scale,metierNum,monthNum,scenames){
+  mapsOnAgridEffort = function(effortMaps,scale,metierNum,monthNum,scenames){
     # scale="Node" #input$selmap.scale
     # monthNum=2# input$selmap.month
     # metierNum=NA #metierNum
@@ -186,6 +194,30 @@ server <- function(input, output) {
     return(grid.arrange(grobs=plotList,ncol=numCols))
   }
   
+  mapsOnAgridBiomass = function(biomassMaps,scale,popNum,monthNum,scenames){
+    # scale="Node" #input$selmap.scale
+    # monthNum=2# input$selmap.month
+    # metierNum=NA #metierNum
+    # scenames=c("A","B")
+    plotList=list()
+    i=0
+    for(dataset in biomassMaps){
+      i=i+1
+      if(scale=="Node"){
+        plotList[[i]]=as_grob(getBiomassMapNode(dataset$interimMap,popNum,timeStep=monthNum,gif=F,scename=scenames[i],scale="Node"))
+      }
+      if(scale=="ICES rectangle"){
+        plotList[[i]]=as_grob(getBiomassMapNode(dataset$interimMapICES,popNum,timeStep=monthNum,gif=F,scename=scenames[i],scale="ICES rectangle"))
+      }
+      if(scale=="RTI rectangle"){
+        plotList[[i]]=as_grob(getBiomassMapNode(dataset$interimMapRTI,popNum,timeStep=monthNum,gif=F,scename=scenames[i],scale="RTI rectangle"))
+      }
+    }
+    numCols = 4
+    if(length(plotList)<4) numCols = length(plotList)
+    return(grid.arrange(grobs=plotList,ncol=numCols))
+  }
+  
   output$cumulativeMap <- renderPlot({
     # # scedir <- "data/CelticSea44/"
     #  scedir <- ""
@@ -197,9 +229,18 @@ server <- function(input, output) {
     # outdir <- "output"
     # 
     # makeCumulativeMap(scedir = scedir, outdir = outdir, scenarios = scenarios,a_type = input$sel.mapquantity, in_relative = FALSE)
-    metierNum=input$selmap.metier
-    if(metierNum=="All") metierNum = NA
-    plot2render=mapsOnAgrid(effortMaps,scale=input$selmap.scale,metierNum,monthNum=input$selmap.month,attr(effortMaps,"names"))
+    plot2render = NULL
+    
+    if(input$selmap.variable=="Effort"){
+      metierNum=input$selmap.metier
+      if(metierNum=="All") metierNum = NA
+      plot2render=mapsOnAgridEffort(effortMaps,scale=input$selmap.scale,metierNum,monthNum=input$selmap.month,attr(effortMaps,"names"))
+    }
+    
+    if(input$selmap.variable=="Biomass"){
+      numOfPop=input$selmap.pop
+      plot2render=mapsOnAgridBiomass(biomassMaps,scale=input$selmap.scale,popNum=numOfPop,monthNum=input$selmap.month,attr(biomassMaps,"names"))
+    }
     
     plot2render
   })

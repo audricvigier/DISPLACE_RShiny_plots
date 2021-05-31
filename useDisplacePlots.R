@@ -23,10 +23,10 @@ library(sp)
 library(tidyverse)
 library(viridis) # colour-blind friendly palettes
 displaceplotLib="D:/work/Displace/displaceplot/R"
-for (file in list.files(displaceplotLib)) source(paste(displaceplotLib,file,sep="/"))
+for (fileName in list.files(displaceplotLib)) source(paste(displaceplotLib,fileName,sep="/"))
 shinyLib="D:/work/Displace/DISPLACE_RShiny_plots/R-scripts"
-for (file in list.files(shinyLib,pattern=".R")[-c(5,7,8)]) source(paste(shinyLib,file,sep="/")) # Issue with "makeStudyAreaMap.R" 
-for (file in list.files(paste(shinyLib,"/fromFrancois"),pattern=".R")) source(paste(paste(shinyLib,"/fromFrancois"),file,sep="/"))
+for (fileName in list.files(shinyLib,pattern=".R")[-c(6,8,9)]) source(paste(shinyLib,fileName,sep="/")) # Issue with "makeStudyAreaMap.R" 
+for (fileName in list.files(paste(shinyLib,"/fromFrancois"),pattern=".R")) source(paste(paste(shinyLib,"/fromFrancois"),fileName,sep="/"))
 
 ##################
 ###
@@ -179,3 +179,94 @@ for(sce in general$namefolderoutput){
 }
 
 
+##################
+###
+###BIOMASS PLOTS
+###
+##################
+
+for(sce in general$namefolderoutput){
+  if(!file.exists(paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))){
+    myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2]),"_out.db",sep=""))
+    dbListTables(myConn)
+    
+    #dbListFields(myConn,"VesselLogLike")
+    PopValues = dbGetQuery(myConn,"SELECT * FROM PopValues") # To get Cumulated catch per population
+    PopDyn = dbGetQuery(myConn,"SELECT * FROM PopDyn") # To get pop dynamics (spatially aggregated)
+    NodesDef = dbGetQuery(myConn,"SELECT * FROM NodesDef") # To get Irish registered catch only population
+    
+    dbDisconnect(myConn) # Close connection
+    
+    interimMap = getInterim(PopValues)
+    
+    interim = interimMap %>% 
+      group_by(TStep,PopId) %>%
+      summarize(TotalW=sum(TotalW),TotalN=sum(TotalN),CumCatches=sum(CumCatches),CumDiscards=sum(CumDiscards)) # N is in thousands
+    
+    icesquarterrectangle=raster(xmn=-13, xmx=-4, ymn=47.5, ymx=57, crs=CRS("+proj=longlat +datum=WGS84"), resolution=c(0.5,0.25)) # Create a raster bigger than necessary; encompass all the harbours!
+    #values will be their ICES name. Main rectangle: ususal name. Quarter name : 1 upper left, 2 upper right, 3 lower left, 4 lower right
+    xcoord=47:55 #D is replaced by 4; E is replaced by 5 since DISPLACE needs integers, hence are D7 to E5
+    ycoord=seq(42,24,-1)
+    icesNames=matrix(rep(paste(rep(ycoord, each=length(xcoord)),rep(xcoord,times=length(ycoord)),sep=""),each=2),ncol=length(ycoord))
+    icesNames=icesNames[,rep(1:ncol(icesNames), each = 2) ]
+    icesNames=paste(icesNames, rep(c(rep(c(1,2),times=length(xcoord)),rep(c(3,4),times=length(xcoord))),times=length(ycoord)),sep="")
+    icesNames=matrix(icesNames,ncol=2*length(ycoord))
+    icesNames=as.numeric(icesNames)
+    RTIrectangle=setValues(icesquarterrectangle, icesNames)
+    RTIrectangle=as.data.frame(RTIrectangle,xy=T)
+    
+    icesquarterrectangle=raster(xmn=-13, xmx=-4, ymn=47.5, ymx=57, crs=CRS("+proj=longlat +datum=WGS84"), resolution=c(1,0.5)) # Create a raster bigger than necessary; encompass all the harbours!
+    icesNames=matrix(paste(rep(ycoord, each=length(xcoord)),rep(xcoord,times=length(ycoord)),sep=""),ncol=length(ycoord))
+    icesNames=as.numeric(icesNames)
+    icesquarterrectangle=setValues(icesquarterrectangle, icesNames)
+    icesquarterrectangle=as.data.frame(icesquarterrectangle,xy=T)
+    
+    nodes2merge=subset(NodesDef,select=c(NodeId,Long,Lat,icesrectanglecode), HarbourId==0) %>% 
+      rename(rtirectangle=icesrectanglecode) %>% 
+      mutate(icesrectanglecode=as.numeric(sapply(as.character(rtirectangle), function(x) substr(x,1,4))))
+    
+    interimMap = interimMap %>% 
+      group_by(TStep,PopId) %>% 
+      mutate(TotalW=TotalW/sum(TotalW)) %>% 
+      ungroup() %>% 
+      mutate(TotalW=replace(TotalW,TotalW<10^(-15),0)) %>% # Considered equal to 0 if biomass distribution is too low in some cells
+      merge(nodes2merge, by=c("NodeId"))
+    
+    interimMap = interimMap %>% 
+      mutate(TStep=as.factor(TStep))
+    
+    levels(interimMap$TStep)=0:(length(levels(interimMap$TStep))-1)
+    interimMap$TStep=as.numeric(levels(interimMap$TStep))[interimMap$TStep]
+    
+    interimMap = subset(interimMap, select=-c(TotalN,CumCatches,CumDiscards,Impact), TotalW!=0) # To have a lighter save
+    
+    interimMapRTI = interimMap %>% 
+      rename(layer=rtirectangle) %>% 
+      group_by(TStep,layer,PopId) %>% 
+      summarize(TotalW=sum(TotalW,na.rm=T)) %>% 
+      merge(RTIrectangle, by=c("layer")) %>% 
+      rename(Long=x,Lat=y)
+    
+    interimMapICES = interimMap %>% 
+      rename(layer=icesrectanglecode) %>% 
+      group_by(TStep,layer,PopId) %>% 
+      summarize(TotalW=sum(TotalW,na.rm=T)) %>% 
+      merge(icesquarterrectangle, by=c("layer")) %>% 
+      rename(Long=x,Lat=y)
+    
+    #save(interimMap,PopValues,PopDyn,interim,RTIrectangle,icesquarterrectangle,file=paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))
+    save(interimMap,interimMapRTI,interimMapICES,interim,RTIrectangle,icesquarterrectangle,file=paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))
+  }
+  
+  if(file.exists(paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))){
+    load(paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))
+  }
+  
+  # LOOP ON POPS DO ONE GIF PER AGG SCALE
+  for(numPop in sort(unique(interimMap$PopId))){
+    getBiomassMapNode(interimMap,popNum=numPop,timeStep=NA,gif=T,scename=sce,scale="Node")
+    getBiomassMapNode(interimMapRTI,popNum=numPop,timeStep=NA,gif=T,scename=sce,scale="RTI rectangle")
+    getBiomassMapNode(interimMapICES,popNum=numPop,timeStep=NA,gif=T,scename=sce,scale="ICES rectangle")
+  }
+  
+}
