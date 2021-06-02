@@ -16,6 +16,7 @@ shinyOptions(shiny.launch.browser = TRUE)
 
 ## Source R scripts
 source("R-scripts/getBiomassPlots.R", local = TRUE)
+source("R-scripts/getCatchPlots.R", local = TRUE)
 source("R-scripts/getEffortPlots.R", local = TRUE)
 source("R-scripts/mapAverageLayerFiles.R", local = TRUE)
 source("R-scripts/polygonPlotsFromAggLoglikeFiles.R", local = TRUE)
@@ -38,13 +39,33 @@ scenames=c("Multipliers","Multipliers SCE")
 what2="weight"
 selected="_all_"
 a_baseline="calib_multipliers_"
+
+getStockNames = function(){
+  codes=read.table(file=paste(general$main.path.ibm, "/pop_names_CelticSea.txt",sep=""),header=T)
+  stockNames=read.table(file=paste(general$main.path.param,"/POPULATIONS/Stock_biological_traits.csv",sep=""),header=T,sep=",") %>% 
+    select(c(stock,species)) %>% 
+    rename(spp=stock) %>% 
+    merge(codes,by=c("spp")) %>% 
+    rename(PopId=idx)
+}
+
+getMetierNames = function(){
+  codes=read.table(file=paste(general$main.path.ibm, "/metiersspe_CelticSea/metier_names.dat",sep=""),header=T) %>% 
+    rename(metierId=idx)
+}
+
+
+stockNames = getStockNames() %>% 
+  arrange(PopId)
+metierNames = getMetierNames() %>% 
+  arrange(metierId)
 # annualindicfns <- dir(outputLocation, "lst_annualindic.*RData", full.names = TRUE)
 # annualindicscenarios <- gsub("^.*lst_annualindic_|[.]RData", "", popdynfns)
 ## Load all loglike and popdyn files
 #for (f in c(loglikefns, popdynfns, annualindicfns)) load(f, envir = .GlobalEnv)
 for (f in c(loglikefns, popdynfns)) load(f, envir = .GlobalEnv)
 
-biomassMaps = effortMaps = list()
+biomassMaps = effortMaps = allCatchMaps = implicitCatchMaps = explicitCatchMaps = list()
 for (sce in popdynscenarios){
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forEffortPlots.Rdata",sep=""))
   effortMaps[[sce]]$polygonsICES=polygonsICES
@@ -54,6 +75,18 @@ for (sce in popdynscenarios){
   biomassMaps[[sce]]$interimMap=interimMap
   biomassMaps[[sce]]$interimMapRTI=interimMapRTI
   biomassMaps[[sce]]$interimMapICES=interimMapICES
+  load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forAllCatchsPlots.Rdata",sep=""))
+  allCatchMaps[[sce]]$interimMap=allCatchSpatial
+  allCatchMaps[[sce]]$interimMapRTI=allCatchSpatialRTI
+  allCatchMaps[[sce]]$interimMapICES=allCatchSpatialICES
+  load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forImplicitCatchsPlots.Rdata",sep=""))
+  implicitCatchMaps[[sce]]$interimMap=implicitCatchSpatial
+  implicitCatchMaps[[sce]]$interimMapRTI=implicitCatchSpatialRTI
+  implicitCatchMaps[[sce]]$interimMapICES=implicitCatchSpatialICES
+  load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forExplicitCatchsPlots.Rdata",sep=""))
+  explicitCatchMaps[[sce]]$interimMap=explicitCatchSpatial
+  explicitCatchMaps[[sce]]$interimMapRTI=explicitCatchSpatialRTI
+  explicitCatchMaps[[sce]]$interimMapICES=explicitCatchSpatialICES
 }
 
 ## and read some tables
@@ -98,11 +131,13 @@ ui <- dashboardPage(
                   #convertMenuItem("map", menuItem("Maps", tabName = "map", icon = icon("map"),selectInput("sel.mapquantity", "Select quantity", choices = selquantity(), multiple = FALSE, selectize = FALSE))), # cumulativeCatch, discards, ftime, swept area
                   convertMenuItem("map",
                                   menuItem("Maps", tabName = "map", icon = icon("map"),
-                                           selectInput("selmap.variable", "Variable", choices=c("Effort","Biomass")),
-                                           sliderInput("selmap.month", "Time step (month)", min = 1, max = ((yend-ybeg+1)*12),value=1, step=1, ticks = T, animate = T),
+                                           selectInput("selmap.variable", "Variable", choices=c("Effort","Biomass","Landings","Discards")),                                       selectInput("selmap.catchVariable", "catch variable", choices=c("Explicit","Implicit","All")),
+                                           sliderInput("selmap.month", "Time step (month)", min = 1, max = ((yend-ybeg+1)*12),value=1, step=1, ticks = T, animate = T),           
+                                           sliderInput("selmap.year", "Time step (year)", min = ybeg, max = yend,value=ybeg, step=1, ticks = T, animate = T),
+                                           selectInput("selmap.timescale", "Aggregation scale (time)", choices=c("month","year")),
                                            selectInput("selmap.metier", "Métier", choices=c("All",0:16)),
                                            selectInput("selmap.pop", "Population", choices=c(0:26)),
-                                           selectInput("selmap.scale", "Aggregation scale", choices=c("Node","ICES rectangle","RTI rectangle")))), # cumulativeCatch, discards, ftime, swept area
+                                           selectInput("selmap.scale", "Aggregation scale (space)", choices=c("Node","ICES rectangle","RTI rectangle")))), # cumulativeCatch, discards, ftime, swept area
                   convertMenuItem("ts",
                                   menuItem("Time series", tabName = "ts", icon = icon("chart-line"),
                                            selectInput("sel.sce", "Select scenarios", choices = selsce(popdynscenarios,scenames), selected = selsce(popdynscenarios,scenames), multiple = TRUE, selectize = FALSE),
@@ -218,6 +253,45 @@ server <- function(input, output) {
     return(grid.arrange(grobs=plotList,ncol=numCols))
   }
   
+  mapsOnAgridCatch = function(dataset,catchType,fractionName,metierNum,scaleSpace,scaleTime,popNum,timeStep,scenames){
+    # catchMaps=explicitCatchMaps
+    # catchType="Explicit"
+    # scaleSpace="Node" #input$selmap.scale
+    # scaleTime="month"
+    # popNum=7
+    # timeStep=2# input$selmap.month
+    # metierNum=3 #metierNum
+    # scenames=c("A","B")
+    # fractionName="Landings"
+    # plotList=list()
+    # data2plot=NULL
+    
+    if(scaleSpace=="Node") scaleSpace = "All"
+    if(scaleSpace=="RTI rectangle") scaleSpace = "RTI"
+    if(scaleSpace=="ICES rectangle") scaleSpace = "ICES"
+    if (scaleTime=="year" & catchType=="Explicit") timeStep = timeStep +ybeg -1
+    plotList=list()
+    i=0
+    for(data2map in dataset){
+      if(scaleSpace=="All") data2plot = data2map$interimMap
+      if(scaleSpace=="ICES") data2plot = data2map$interimMapICES
+      if(scaleSpace=="RTI") data2plot = data2map$interimMapRTI
+      i=i+1
+      if(catchType=="Explicit"){
+        plotList[[i]]=as_grob(getExplicitCatchMap(data2plot,popNum,timeStep,metierNum,fractionName,sce=scenames[i],scaleTime,resScale=scaleSpace,gif=F))
+      }
+      if(catchType=="Implicit"){
+        plotList[[i]]=as_grob(getImplicitCatchMap(data2plot,popNum,timeStep,fractionName,sce=scenames[i],scaleTime,resScale=scaleSpace,gif=F))
+      }
+      if(catchType=="All"){
+        plotList[[i]]=as_grob(getAllCatchMap(data2plot,popNum,timeStep,fractionName,sce=scenames[i],scaleTime,resScale=scaleSpace,gif=F))
+      }
+    }
+    numCols = 4
+    if(length(plotList)<4) numCols = length(plotList)
+    return(grid.arrange(grobs=plotList,ncol=numCols))
+  }
+  
   output$cumulativeMap <- renderPlot({
     # # scedir <- "data/CelticSea44/"
     #  scedir <- ""
@@ -241,7 +315,17 @@ server <- function(input, output) {
       numOfPop=input$selmap.pop
       plot2render=mapsOnAgridBiomass(biomassMaps,scale=input$selmap.scale,popNum=numOfPop,monthNum=input$selmap.month,attr(biomassMaps,"names"))
     }
-    
+    if(input$selmap.variable%in%c("Discards","Landings")){
+      metierNum=input$selmap.metier
+      numOfPop=input$selmap.pop
+      catchType=input$selmap.catchVariable
+      if(input$selmap.timescale=="month") timeStep = input$selmap.month
+      if(input$selmap.timescale=="year") timeStep = input$selmap.year-ybeg+1
+      
+      if(catchType == "Explicit") plot2render=mapsOnAgridCatch(dataset=explicitCatchMaps,catchType,fractionName=input$selmap.variable,metierNum,scaleSpace=input$selmap.scale,scaleTime=input$selmap.timescale,popNum=numOfPop,timeStep,attr(biomassMaps,"names"))
+      if(catchType == "Implicit") plot2render=mapsOnAgridCatch(dataset=implicitCatchMaps,catchType,fractionName=input$selmap.variable,metierNum,scaleSpace=input$selmap.scale,scaleTime=input$selmap.timescale,popNum=numOfPop,timeStep,attr(biomassMaps,"names"))
+      if(catchType == "All") plot2render=mapsOnAgridCatch(dataset=allCatchMaps,catchType,fractionName=input$selmap.variable,metierNum,scaleSpace=input$selmap.scale,scaleTime=input$selmap.timescale,popNum=numOfPop,timeStep,attr(biomassMaps,"names"))
+    }
     plot2render
   })
 

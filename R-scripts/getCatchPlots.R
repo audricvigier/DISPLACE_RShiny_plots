@@ -8,21 +8,21 @@
 # R version......................: R version 3.6.0 (2019-04-26)
 #----------------------------------------------------------------
 
-rm(list=ls())
-library(broom)
-library(raster)
-library(reshape2)
-library(rgdal)
-library(RSQLite) # To handle databases https://statkclee.github.io/R-ecology-lesson/06-r-and-sql.html
-library(sp)
-library(tidyverse)
-library(gifski)
-library(gganimate)
-library(grDevices)
-library(viridis) # colour-blind friendly palettes
-# library(displaceplot) # Some functions exist to produce some plots, but not the ones I'm looking for.
-# library(help=displaceplot)
-source("D:/work/Displace/DISPLACE_RShiny_plots/R-scripts/setGeneralVariable.R", local = TRUE)
+# rm(list=ls())
+# library(broom)
+# library(raster)
+# library(reshape2)
+# library(rgdal)
+# library(RSQLite) # To handle databases https://statkclee.github.io/R-ecology-lesson/06-r-and-sql.html
+# library(sp)
+# library(tidyverse)
+# library(gifski)
+# library(gganimate)
+# library(grDevices)
+# library(viridis) # colour-blind friendly palettes
+# # library(displaceplot) # Some functions exist to produce some plots, but not the ones I'm looking for.
+# # library(help=displaceplot)
+# source("D:/work/Displace/DISPLACE_RShiny_plots/R-scripts/setGeneralVariable.R", local = TRUE)
 
 ##################
 ###
@@ -30,19 +30,19 @@ source("D:/work/Displace/DISPLACE_RShiny_plots/R-scripts/setGeneralVariable.R", 
 ###
 ##################
 
-general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displace/", paste0("DISPLACE_input_gis_","CelticSea")),
-                                      pathToDisplaceInputs = file.path("D:/work/Displace/", paste0("DISPLACE_input_","CelticSea")),
-                                      pathToOutputs =file.path("D:","DISPLACE_outputs"),
-                                      caseStudy="CelticSea",
-                                      iGraph=3,
-                                      iYear="2010", # Beginning of time series
-                                      iYearEnd="2020", # End of time series
-                                      iCountry=NULL, #???
-                                      nbPops=27,
-                                      nbSzgroup=14,
-                                      theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
-                                      nbSimus=20,
-                                      useSQLite=FALSE)
+# general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displace/", paste0("DISPLACE_input_gis_","CelticSea")),
+#                                       pathToDisplaceInputs = file.path("D:/work/Displace/", paste0("DISPLACE_input_","CelticSea")),
+#                                       pathToOutputs =file.path("D:","DISPLACE_outputs"),
+#                                       caseStudy="CelticSea",
+#                                       iGraph=3,
+#                                       iYear="2010", # Beginning of time series
+#                                       iYearEnd="2020", # End of time series
+#                                       iCountry=NULL, #???
+#                                       nbPops=27,
+#                                       nbSzgroup=14,
+#                                       theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
+#                                       nbSimus=20,
+#                                       useSQLite=FALSE)
 
 #load(file=paste(general$main.path,general$case_study,general$namefolderoutput[1],"output/forEffortPlots.Rdata",sep="/"))
 ##################
@@ -57,18 +57,18 @@ general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displa
 ###
 ##################
 
-sce=general$namefolderoutput[1]
-myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2]),"_out.db",sep=""))
-dbListTables(myConn)
-
-PopValues = dbGetQuery(myConn,"SELECT * FROM PopValues") # To get Cumulated catch per population
-VesselLogLike = dbGetQuery(myConn,"SELECT * FROM VesselLogLike") # time at sea for each vessel/metier/trip/harbour (NodeId is the harbour, not the fishing location) . But no fishing time?
-VesselLogLikeCatches = dbGetQuery(myConn,"SELECT * FROM VesselLogLikeCatches") 
-VesselVmsLike = dbGetQuery(myConn,"SELECT * FROM VesselVmsLike") # State (including fishing (1), steaming (2) and harbour (3)) for each vessel/node/time step . In theory enough to get the information on effort I want, BUT it's only for 1 year (the first one).... Is it 2 hours slice I have, and not the actual effort? Ask.
-NodesDef = dbGetQuery(myConn,"SELECT * FROM NodesDef") # Get nodes coordinates, ICES rectangle and RTI rectangle (all coded in icesrectanglecode)
-NodesStat = dbGetQuery(myConn,"SELECT * FROM NodesStat")
-
-dbDisconnect(myConn) # Close connection
+# sce=general$namefolderoutput[1]
+# myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2]),"_out.db",sep=""))
+# dbListTables(myConn)
+# 
+# PopValues = dbGetQuery(myConn,"SELECT * FROM PopValues") # To get Cumulated catch per population
+# VesselLogLike = dbGetQuery(myConn,"SELECT * FROM VesselLogLike") # time at sea for each vessel/metier/trip/harbour (NodeId is the harbour, not the fishing location) . But no fishing time?
+# VesselLogLikeCatches = dbGetQuery(myConn,"SELECT * FROM VesselLogLikeCatches") 
+# VesselVmsLike = dbGetQuery(myConn,"SELECT * FROM VesselVmsLike") # State (including fishing (1), steaming (2) and harbour (3)) for each vessel/node/time step . In theory enough to get the information on effort I want, BUT it's only for 1 year (the first one).... Is it 2 hours slice I have, and not the actual effort? Ask.
+# NodesDef = dbGetQuery(myConn,"SELECT * FROM NodesDef") # Get nodes coordinates, ICES rectangle and RTI rectangle (all coded in icesrectanglecode)
+# NodesStat = dbGetQuery(myConn,"SELECT * FROM NodesStat")
+# 
+# dbDisconnect(myConn) # Close connection
 
 ##################
 ###
@@ -78,63 +78,64 @@ dbDisconnect(myConn) # Close connection
 
 ##################
 # Prepare dataset
-getStockNames = function(){
-  codes=read.table(file=paste(general$main.path.ibm, "/pop_names_CelticSea.txt",sep=""),header=T)
-  stockNames=read.table(file=paste(general$main.path.param,"/POPULATIONS/Stock_biological_traits.csv",sep=""),header=T,sep=",") %>% 
-    select(c(stock,species)) %>% 
-    rename(spp=stock) %>% 
-    merge(codes,by=c("spp")) %>% 
-    rename(PopId=idx)
-}
 
-stockNames = getStockNames() %>% 
-  arrange(PopId)
-
-getMetierNames = function(){
-  codes=read.table(file=paste(general$main.path.ibm, "/metiersspe_CelticSea/metier_names.dat",sep=""),header=T) %>% 
-    rename(metierId=idx)
-}
-
-metierNames = getMetierNames() %>% 
-  arrange(metierId)
-
-months = data.frame(TStep = sort(unique(NodesStat$TStep)), month= 1:length(sort(unique(NodesStat$TStep))))
-months = data.frame(TStep = c(sort(unique(NodesStat$TStep)),(max(NodesStat$TStep)+100)), month= c(1:length(sort(unique(NodesStat$TStep))),length(sort(unique(NodesStat$TStep))))) # Adding one more row to avoid crashes
-
-nodes2merge=subset(NodesDef,select=c(NodeId,Long,Lat,icesrectanglecode), HarbourId==0) %>%
-  rename(rtirectangle=icesrectanglecode) %>%
-  mutate(icesrectanglecode=as.numeric(sapply(as.character(rtirectangle), function(x) substr(x,1,4))))
-
-metierCorr= unique(subset(VesselLogLike, select=c(Id,metierId)))
-
-VesselVmsLikeCond = VesselVmsLike %>%  # Pb: VesselLogLike's NodeId is the harbour, not the actual fishing location. get the fishing location here
-  filter(State==1) %>% 
-  group_by(Id,TStepDep) %>% 
-  filter(TStep==max(TStep)) %>% 
-  ungroup() %>% 
-  select(-c(CumFuel,Course,State)) %>%
-  unique() %>%
-  merge(nodes2merge,by=c("Long","Lat"))
-
-#Shapefiles for ICES rectangles and RTI rectangles
-## Create shapefile VERIFIED, ALL NAMES MATCH THE GOOD RECTANGLES
-icesquarterrectangle=raster(xmn=-13, xmx=-4, ymn=47.5, ymx=57, crs=CRS("+proj=longlat +datum=WGS84"), resolution=c(0.5,0.25)) # Create a raster bigger than necessary; encompass all the harbours!
-#values will be their ICES name. Main rectangle: ususal name. Quarter name : 1 upper left, 2 upper right, 3 lower left, 4 lower right
-xcoord=47:55 #D is replaced by 4; E is replaced by 5 since DISPLACE needs integers, hence are D7 to E5
-ycoord=seq(42,24,-1)
-icesNames=matrix(rep(paste(rep(ycoord, each=length(xcoord)),rep(xcoord,times=length(ycoord)),sep=""),each=2),ncol=length(ycoord))
-icesNames=icesNames[,rep(1:ncol(icesNames), each = 2) ]
-icesNames=paste(icesNames, rep(c(rep(c(1,2),times=length(xcoord)),rep(c(3,4),times=length(xcoord))),times=length(ycoord)),sep="")
-icesNames=matrix(icesNames,ncol=2*length(ycoord))
-icesNames=as.numeric(icesNames)
-RTIrectangle=setValues(icesquarterrectangle, icesNames)
-RTIrectangle=as.data.frame(RTIrectangle,xy=T)
-
-icesquarterrectangle=raster(xmn=-13, xmx=-4, ymn=47.5, ymx=57, crs=CRS("+proj=longlat +datum=WGS84"), resolution=c(1,0.5)) # Create a raster bigger than necessary; encompass all the harbours!
-icesNames=matrix(paste(rep(ycoord, each=length(xcoord)),rep(xcoord,times=length(ycoord)),sep=""),ncol=length(ycoord))
-icesNames=as.numeric(icesNames)
-icesquarterrectangle=setValues(icesquarterrectangle, icesNames)
-icesquarterrectangle=as.data.frame(icesquarterrectangle,xy=T)
+# getStockNames = function(){
+#   codes=read.table(file=paste(general$main.path.ibm, "/pop_names_CelticSea.txt",sep=""),header=T)
+#   stockNames=read.table(file=paste(general$main.path.param,"/POPULATIONS/Stock_biological_traits.csv",sep=""),header=T,sep=",") %>% 
+#     select(c(stock,species)) %>% 
+#     rename(spp=stock) %>% 
+#     merge(codes,by=c("spp")) %>% 
+#     rename(PopId=idx)
+# }
+# 
+# stockNames = getStockNames() %>% 
+#   arrange(PopId)
+# 
+# getMetierNames = function(){
+#   codes=read.table(file=paste(general$main.path.ibm, "/metiersspe_CelticSea/metier_names.dat",sep=""),header=T) %>% 
+#     rename(metierId=idx)
+# }
+# 
+# metierNames = getMetierNames() %>% 
+#   arrange(metierId)
+#
+# months = data.frame(TStep = sort(unique(NodesStat$TStep)), month= 1:length(sort(unique(NodesStat$TStep))))
+# months = data.frame(TStep = c(sort(unique(NodesStat$TStep)),(max(NodesStat$TStep)+100)), month= c(1:length(sort(unique(NodesStat$TStep))),length(sort(unique(NodesStat$TStep))))) # Adding one more row to avoid crashes
+# 
+# nodes2merge=subset(NodesDef,select=c(NodeId,Long,Lat,icesrectanglecode), HarbourId==0) %>%
+#   rename(rtirectangle=icesrectanglecode) %>%
+#   mutate(icesrectanglecode=as.numeric(sapply(as.character(rtirectangle), function(x) substr(x,1,4))))
+# 
+# metierCorr= unique(subset(VesselLogLike, select=c(Id,metierId)))
+# 
+# VesselVmsLikeCond = VesselVmsLike %>%  # Pb: VesselLogLike's NodeId is the harbour, not the actual fishing location. get the fishing location here
+#   filter(State==1) %>% 
+#   group_by(Id,TStepDep) %>% 
+#   filter(TStep==max(TStep)) %>% 
+#   ungroup() %>% 
+#   select(-c(CumFuel,Course,State)) %>%
+#   unique() %>%
+#   merge(nodes2merge,by=c("Long","Lat"))
+# 
+# #Shapefiles for ICES rectangles and RTI rectangles
+# ## Create shapefile VERIFIED, ALL NAMES MATCH THE GOOD RECTANGLES
+# icesquarterrectangle=raster(xmn=-13, xmx=-4, ymn=47.5, ymx=57, crs=CRS("+proj=longlat +datum=WGS84"), resolution=c(0.5,0.25)) # Create a raster bigger than necessary; encompass all the harbours!
+# #values will be their ICES name. Main rectangle: ususal name. Quarter name : 1 upper left, 2 upper right, 3 lower left, 4 lower right
+# xcoord=47:55 #D is replaced by 4; E is replaced by 5 since DISPLACE needs integers, hence are D7 to E5
+# ycoord=seq(42,24,-1)
+# icesNames=matrix(rep(paste(rep(ycoord, each=length(xcoord)),rep(xcoord,times=length(ycoord)),sep=""),each=2),ncol=length(ycoord))
+# icesNames=icesNames[,rep(1:ncol(icesNames), each = 2) ]
+# icesNames=paste(icesNames, rep(c(rep(c(1,2),times=length(xcoord)),rep(c(3,4),times=length(xcoord))),times=length(ycoord)),sep="")
+# icesNames=matrix(icesNames,ncol=2*length(ycoord))
+# icesNames=as.numeric(icesNames)
+# RTIrectangle=setValues(icesquarterrectangle, icesNames)
+# RTIrectangle=as.data.frame(RTIrectangle,xy=T)
+# 
+# icesquarterrectangle=raster(xmn=-13, xmx=-4, ymn=47.5, ymx=57, crs=CRS("+proj=longlat +datum=WGS84"), resolution=c(1,0.5)) # Create a raster bigger than necessary; encompass all the harbours!
+# icesNames=matrix(paste(rep(ycoord, each=length(xcoord)),rep(xcoord,times=length(ycoord)),sep=""),ncol=length(ycoord))
+# icesNames=as.numeric(icesNames)
+# icesquarterrectangle=setValues(icesquarterrectangle, icesNames)
+# icesquarterrectangle=as.data.frame(icesquarterrectangle,xy=T)
 
 ##################
 # WARNING : these plots are not meant for quality of fit evaluation, hence implicit catch can be accounted for on 2010:2011
@@ -196,13 +197,13 @@ getImplicitCatch = function(PopValues,explicitCatch){
     as.data.frame() %>% 
     reshape2::dcast(.,PopId+month+year~Fraction,value.var="value")
   
- # 1'30" for 3 years, unavoidable
+  # 1'30" for 3 years, unavoidable
   ImplicitCatch = PopValues %>% 
     group_by(TStep,PopId,NodeId) %>% # Eliminate duplicates rows at last time step
     filter(row_number() == 1) %>% 
     ungroup()
   
- # 1.3sec for 3 years
+  # 1.3sec for 3 years
   ImplicitCatch = ImplicitCatch %>% 
     group_by(TStep,PopId) %>% 
     summarise_at(c("CumDiscards","CumCatches"),sum) %>% # COnvert to tons
@@ -252,7 +253,7 @@ getImplicitCatchSpatial = function(PopValues,explicitCatchSpatial,nodes2merge){
     mutate(month=as.numeric(levels(month))[month]) %>% 
     filter(month!=0)
   
-   # 1'30 for 3 years.
+  # 1'30 for 3 years.
   ImplicitCatch2 = list()
   for (monthNum in sort(unique(ImplicitCatch$month))){
     ImplicitCatch2[[monthNum]] = ImplicitCatch %>% 
@@ -266,7 +267,7 @@ getImplicitCatchSpatial = function(PopValues,explicitCatchSpatial,nodes2merge){
   
   ImplicitCatch2 = plyr::ldply(ImplicitCatch2) %>% 
     mutate(Catches =CumCatches-Catches, Discards =CumDiscards-Discards) %>% 
-    select(-c(CumDiscards,CumCatches)) %>% 
+    select(-c(CumDiscards,CumCatches,TStep)) %>% 
     #group_by(month,PopId,NodeId,year,icesrectanglecode,rtirectangle,Long,Lat) %>% Useless to group it
     melt(id.vars=c("PopId","month","year","NodeId","icesrectanglecode","rtirectangle","Long","Lat")) %>% 
     rename(Fraction=variable)
@@ -275,50 +276,99 @@ getImplicitCatchSpatial = function(PopValues,explicitCatchSpatial,nodes2merge){
 }
 
 
-explicitCatch = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,nodes2merge) # Includes discards, 13 sec for 3 years 
-explicitCatchSpatial = getExplicitCatchSpatial(VesselLogLike,VesselLogLikeCatches,months) # 18 secs for 3 years. Maybe cut year by year for longer sims? LIMITED TO ONE YEAR SO FAR BECAUSE OF DISPLACE HARD CODING 
-implicitCatch = getImplicitCatch(PopValues,explicitCatchSpatial) # Includes discards 2' for 3 years 
-implicitCatchSpatial = getImplicitCatchSpatial(PopValues,explicitCatchSpatial,nodes2merge)# WARNING: ONLY 2010 IMPLICIT CATCH IS PROPERLY DERIVED AT THAT SCALE DUE TO DISPLACE HARDCODING ON VMSLIKE TABLE; 4.42904 mins for 3 years
-
-#save(explicitCatch,explicitCatchSpatial,implicitCatch,implicitCatchSpatial,file=paste(general$main.path,general$case_study,sce,"output/forCatchsPlots.Rdata",sep="/")) # 177MB
-
-#save(explicitCatch,explicitCatchSpatial,implicitCatch,file=paste(general$main.path,general$case_study,sce,"output/forCatchsPlots.Rdata",sep="/")) # 5.5MB 
-
-#22 secs to load 3 years (177MB)
-#load(file=paste(general$main.path,general$case_study,sce,"output/forCatchsPlots.Rdata",sep="/"))
-
-explicitCatchSpatialICES = explicitCatchSpatial %>% 
-  group_by(PopId,month,metierId,icesrectanglecode,year,Fraction) %>% 
-  summarize(value=sum(value)) %>% 
-  rename(layer=icesrectanglecode) %>% 
-  merge(icesquarterrectangle,by=c("layer"))
-
-explicitCatchSpatialRTI = explicitCatchSpatial %>% 
-  group_by(PopId,month,metierId,rtirectangle,year,Fraction) %>% 
-  summarize(value=sum(value)) %>% 
-  rename(layer=rtirectangle) %>% 
-  merge(RTIrectangle,by=c("layer"))
-
-implicitCatchSpatialICES = implicitCatchSpatial %>% 
-  group_by(PopId,month,icesrectanglecode,year,Fraction) %>% 
-  summarize(value=sum(value)) %>% 
-  rename(layer=icesrectanglecode) %>% 
-  merge(icesquarterrectangle,by=c("layer"))
-
-implicitCatchSpatialRTI = implicitCatchSpatial %>% 
-  group_by(PopId,month,rtirectangle,year,Fraction) %>% 
-  summarize(value=sum(value)) %>% 
-  rename(layer=rtirectangle) %>% 
-  merge(RTIrectangle,by=c("layer"))
-
-#save(explicitCatch,explicitCatchSpatial,implicitCatch,implicitCatchSpatial,explicitCatchSpatialICES,explicitCatchSpatialRTI,implicitCatchSpatialICES,implicitCatchSpatialRTI,file=paste(general$main.path,general$case_study,sce,"output/forCatchsPlots.Rdata",sep="/")) # 184MB
-
-load(file=paste(general$main.path,general$case_study,sce,"output/forCatchsPlots.Rdata",sep="/"))
+# explicitCatch = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,nodes2merge) # Includes discards, 13 sec for 3 years 
+# explicitCatchSpatial = getExplicitCatchSpatial(VesselLogLike,VesselLogLikeCatches,months) # 18 secs for 3 years. Maybe cut year by year for longer sims? LIMITED TO ONE YEAR SO FAR BECAUSE OF DISPLACE HARD CODING 
+# implicitCatch = getImplicitCatch(PopValues,explicitCatchSpatial) # Includes discards 2' for 3 years 
+# implicitCatchSpatial = getImplicitCatchSpatial(PopValues,explicitCatchSpatial,nodes2merge)# WARNING: ONLY 2010 IMPLICIT CATCH IS PROPERLY DERIVED AT THAT SCALE DUE TO DISPLACE HARDCODING ON VMSLIKE TABLE; 4.42904 mins for 3 years
+# 
+# #save(explicitCatch,explicitCatchSpatial,implicitCatch,implicitCatchSpatial,file=paste(general$main.path,general$case_study,sce,"output/forCatchsPlots.Rdata",sep="/")) # 177MB
+# 
+# #save(explicitCatch,explicitCatchSpatial,implicitCatch,file=paste(general$main.path,general$case_study,sce,"output/forCatchsPlots.Rdata",sep="/")) # 5.5MB 
+# 
+# #22 secs to load 3 years (177MB)
+# #load(file=paste(general$main.path,general$case_study,sce,"output/forCatchsPlots.Rdata",sep="/"))
+# 
+# explicitCatchSpatialICES = explicitCatchSpatial %>% 
+#   group_by(PopId,month,metierId,icesrectanglecode,year,Fraction) %>% 
+#   summarize(value=sum(value)) %>% 
+#   rename(layer=icesrectanglecode) %>% 
+#   merge(icesquarterrectangle,by=c("layer"))
+# 
+# explicitCatchSpatialRTI = explicitCatchSpatial %>% 
+#   group_by(PopId,month,metierId,rtirectangle,year,Fraction) %>% 
+#   summarize(value=sum(value)) %>% 
+#   rename(layer=rtirectangle) %>% 
+#   merge(RTIrectangle,by=c("layer"))
+# 
+# implicitCatchSpatialICES = implicitCatchSpatial %>% 
+#   group_by(PopId,month,icesrectanglecode,year,Fraction) %>% 
+#   summarize(value=sum(value)) %>% 
+#   rename(layer=icesrectanglecode) %>% 
+#   merge(icesquarterrectangle,by=c("layer"))
+# 
+# implicitCatchSpatialRTI = implicitCatchSpatial %>% 
+#   group_by(PopId,month,rtirectangle,year,Fraction) %>% 
+#   summarize(value=sum(value)) %>% 
+#   rename(layer=rtirectangle) %>% 
+#   merge(RTIrectangle,by=c("layer"))
+# 
+# data2process = explicitCatchSpatial %>% 
+#   mutate(year=year-min(year)) %>% 
+#   select(-c(metierId)) %>% 
+#   bind_rows(implicitCatchSpatial)
+# 
+# data2process2= list()
+# for(monthNum in sort(unique(data2process$month))){
+#   data2process2[[monthNum]] = data2process %>%
+#     filter(month==monthNum) %>% 
+#     group_by(PopId,month,NodeId,icesrectanglecode,rtirectangle,Long,Lat,year,Fraction) %>% 
+#     summarize(value=sum(value,na.rm=T)) %>% 
+#     ungroup()
+# }
+# allCatchSpatial=plyr::ldply(data2process2)
+# 
+# data2process = explicitCatchSpatialICES %>% 
+#   mutate(year=year-min(year)) %>% 
+#   select(-c(metierId)) %>% 
+#   bind_rows(implicitCatchSpatialICES)
+# 
+# data2process2= list()
+# for(monthNum in sort(unique(data2process$month))){
+#   data2process2[[monthNum]] = data2process %>%
+#     filter(month==monthNum) %>% 
+#     group_by(layer,PopId,month,year,Fraction,x,y) %>% 
+#     summarize(value=sum(value,na.rm=T)) %>% 
+#     ungroup()
+# }
+# allCatchSpatialICES=plyr::ldply(data2process2)
+# 
+# data2process = explicitCatchSpatialRTI %>% 
+#   mutate(year=year-min(year)) %>% 
+#   select(-c(metierId)) %>% 
+#   bind_rows(implicitCatchSpatialRTI)
+# 
+# data2process2= list()
+# for(monthNum in sort(unique(data2process$month))){
+#   data2process2[[monthNum]] = data2process %>%
+#     filter(month==monthNum) %>% 
+#     group_by(layer,PopId,month,year,Fraction,x,y) %>% 
+#     summarize(value=sum(value,na.rm=T)) %>% 
+#     ungroup()
+# }
+# allCatchSpatialRTI=plyr::ldply(data2process2)
+# 
+# # save(explicitCatch,explicitCatchSpatial,explicitCatchSpatialICES,explicitCatchSpatialRTI,file=paste(general$main.path,general$case_study,sce,"output/forExplicitCatchsPlots.Rdata",sep="/"))
+# # save(implicitCatch,implicitCatchSpatial,implicitCatchSpatialICES,implicitCatchSpatialRTI,file=paste(general$main.path,general$case_study,sce,"output/forImplicitCatchsPlots.Rdata",sep="/"))
+# # save(allCatchSpatialRTI,allCatchSpatialICES,allCatchSpatial,file=paste(general$main.path,general$case_study,sce,"output/forAllCatchsPlots.Rdata",sep="/"))
+# 
+# load(file=paste(general$main.path,general$case_study,sce,"output/forExplicitCatchsPlots.Rdata",sep="/"))
+# load(file=paste(general$main.path,general$case_study,sce,"output/forImplicitCatchsPlots.Rdata",sep="/"))
+# load(file=paste(general$main.path,general$case_study,sce,"output/forAllCatchsPlots.Rdata",sep="/"))
 
 ##################
 # Prepare time series plots
 
-getExplicitCatchTimeSeries = function(explicitCatch,aggScale="year",metierSel="All",popSel="All",chosenFraction=c("Landings","Discards"),sce){
+getExplicitCatchTimeSeries = function(explicitCatch,aggScale="year",metierSel="All",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce){
   data2plot = explicitCatch %>% 
     mutate(metierId=factor(metierId,metierNames$metierId,labels=metierNames$name)) %>% 
     mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
@@ -339,16 +389,16 @@ getExplicitCatchTimeSeries = function(explicitCatch,aggScale="year",metierSel="A
     filter(Fraction%in%chosenFraction) %>% 
     ungroup() %>% 
     ggplot(aes(x=time,y=value,colour=metierId,linetype=Fraction,shape=Fraction,group=interaction(metierId,Fraction,PopId)))+
-      geom_line(size=1)+
-      geom_point(size=2)+
-      facet_wrap(~PopId,scales="free_y")+
-      labs(x=paste("Time step (",aggScale,")",sep=""),y="Catch\n(tons)",colour="Métier",linetype="Fraction",shape="Fraction", title = paste("Explicit catch time series\n",sce,sep=""))+
-      theme_minimal()+
-      theme(axis.title.y = element_text(angle=0,vjust=0.5))
+    geom_line(size=1)+
+    geom_point(size=2)+
+    facet_wrap(~PopId,scales="free_y")+
+    labs(x=paste("Time step (",aggScale,")",sep=""),y="Catch\n(tons)",colour="Métier",linetype="Fraction",shape="Fraction", title = paste("Explicit catch time series\n",sce,sep=""))+
+    theme_minimal()+
+    theme(axis.title.y = element_text(angle=0,vjust=0.5))
   return(data2plot)
 }
 
-getImplicitCatchTimeSeries = function(implicitCatch,aggScale="year",popSel="All",chosenFraction=c("Landings","Discards"),sce){
+getImplicitCatchTimeSeries = function(implicitCatch,aggScale="year",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce){
   data2plot = implicitCatch %>% 
     mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
     mutate(Fraction=fct_recode(Fraction,"Landings"="Catches"))
@@ -363,16 +413,16 @@ getImplicitCatchTimeSeries = function(implicitCatch,aggScale="year",popSel="All"
     filter(Fraction%in%chosenFraction) %>% 
     ungroup() %>% 
     ggplot(aes(x=time,y=value,colour=Fraction,linetype=Fraction,shape=Fraction,group=interaction(Fraction,PopId)))+
-      geom_line(size=1)+
-      geom_point(size=2)+
-      facet_wrap(~PopId,scales="free_y")+
-      labs(x=paste("Time step (",aggScale,")",sep=""),y="Catch\n(tons)",colour="Fraction",linetype="Fraction",shape="Fraction", title = paste("Implicit catch time series\n",sce,sep=""))+
-      theme_minimal()+
-      theme(axis.title.y = element_text(angle=0,vjust=0.5))
+    geom_line(size=1)+
+    geom_point(size=2)+
+    facet_wrap(~PopId,scales="free_y")+
+    labs(x=paste("Time step (",aggScale,")",sep=""),y="Catch\n(tons)",colour="Fraction",linetype="Fraction",shape="Fraction", title = paste("Implicit catch time series\n",sce,sep=""))+
+    theme_minimal()+
+    theme(axis.title.y = element_text(angle=0,vjust=0.5))
   return(data2plot)
 }
 
-getAllCatchTimeSeries = function(explicitCatch,implicitCatch,aggScale="year",popSel="All",chosenFraction=c("Landings","Discards"),sce){
+getAllCatchTimeSeries = function(explicitCatch,implicitCatch,aggScale="year",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce){
   interim = explicitCatch %>% 
     group_by(PopId,month,year,Fraction) %>% 
     summarize(value=sum(value)) %>% 
@@ -396,19 +446,19 @@ getAllCatchTimeSeries = function(explicitCatch,implicitCatch,aggScale="year",pop
     filter(Fraction%in%chosenFraction) %>% 
     ungroup() %>% 
     ggplot(aes(x=time,y=value,colour=Fraction,linetype=Fraction,shape=Fraction,group=interaction(Fraction,PopId)))+
-      geom_line(size=1)+
-      geom_point(size=2)+
-      facet_wrap(~PopId,scales="free_y")+
-      labs(x=paste("Time step (",aggScale,")",sep=""),y="Catch\n(tons)",colour="Fraction",linetype="Fraction",shape="Fraction", title = paste("Explicit + implicit catch time series\n",sce,sep=""))+
-      theme_minimal()+
-      theme(axis.title.y = element_text(angle=0,vjust=0.5))
+    geom_line(size=1)+
+    geom_point(size=2)+
+    facet_wrap(~PopId,scales="free_y")+
+    labs(x=paste("Time step (",aggScale,")",sep=""),y="Catch\n(tons)",colour="Fraction",linetype="Fraction",shape="Fraction", title = paste("Explicit + implicit catch time series\n",sce,sep=""))+
+    theme_minimal()+
+    theme(axis.title.y = element_text(angle=0,vjust=0.5))
   return(data2plot)
 }
 
 ##################
 # Prepare bar plots
 
-getExplicitCatchBarPlot = function(explicitCatch,aggScale="year",metierSel="All",popSel="All",chosenFraction=c("Landings","Discards"),sce){
+getExplicitCatchBarPlot = function(explicitCatch,aggScale="year",metierSel="All",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce){
   data2plot = explicitCatch %>% 
     mutate(metierId=factor(metierId,metierNames$metierId,labels=metierNames$name)) %>% 
     mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
@@ -429,15 +479,15 @@ getExplicitCatchBarPlot = function(explicitCatch,aggScale="year",metierSel="All"
     summarize(value=sum(value)) %>% 
     ungroup() %>% 
     ggplot(aes(x=interaction(Fraction,metierId),y=value,fill=PopId,group=interaction(metierId,Fraction,PopId)))+
-      geom_bar(stat="identity",colour="black")+
-      facet_wrap(~time)+
-      labs(x="Métier and fraction",y="Catch\n(tons)",fill="Population", title = paste("Explicit catch species composition\n",sce,sep=""))+
-      theme_minimal()+
-      theme(axis.title.y = element_text(angle=0,vjust=0.5),axis.text.x=element_text(angle=45,vjust=1,hjust=1))
+    geom_bar(stat="identity",colour="black")+
+    facet_wrap(~time)+
+    labs(x="Métier and fraction",y="Catch\n(tons)",fill="Population", title = paste("Explicit catch species composition\n",sce,sep=""))+
+    theme_minimal()+
+    theme(axis.title.y = element_text(angle=0,vjust=0.5),axis.text.x=element_text(angle=45,vjust=1,hjust=1))
   return(data2plot)
 }
 
-getImplicitCatchBarPlot = function(implicitCatch,aggScale="year",popSel="All",chosenFraction=c("Landings","Discards"),sce){
+getImplicitCatchBarPlot = function(implicitCatch,aggScale="year",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce){
   data2plot = implicitCatch %>% 
     mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
     mutate(Fraction=fct_recode(Fraction,"Landings"="Catches"))
@@ -460,7 +510,7 @@ getImplicitCatchBarPlot = function(implicitCatch,aggScale="year",popSel="All",ch
   return(data2plot)
 }
 
-getAllCatchBarPlot = function(explicitCatch,implicitCatch,aggScale="year",popSel="All",chosenFraction=c("Landings","Discards"),sce){
+getAllCatchBarPlot = function(explicitCatch,implicitCatch,aggScale="year",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce){
   interim = explicitCatch %>% 
     group_by(PopId,month,year,Fraction) %>% 
     summarize(value=sum(value)) %>% 
@@ -495,7 +545,17 @@ getAllCatchBarPlot = function(explicitCatch,implicitCatch,aggScale="year",popSel
 ##################
 # Prepare maps
 
-getExplicitCatchMap = function(data2process,popNum=0,timeStep=1,metierNum=0,fractionName="Landings",sce,aggScale="month",resScale="All",gif=F){
+
+# data2process=explicitCatchSpatial
+# popNum=7
+# timeStep=2010
+# fractionName="Landings"
+# aggScale="year"
+# metierNum=3
+# resScale="All"
+# gif=F
+
+getExplicitCatchMap = function(data2process,popNum=0,timeStep=1,metierNum=0,fractionName="Landings",sce=sce,aggScale="month",resScale="All",gif=F){
   # Will be done in the argument, the use will have to be careful
   if(resScale=="All"){
     data2plot=data2process %>% 
@@ -520,12 +580,15 @@ getExplicitCatchMap = function(data2process,popNum=0,timeStep=1,metierNum=0,frac
     data2plot = data2plot %>% 
       mutate(metierId="All") %>% 
       group_by(PopId,time,metierId,layer,Long,Lat,Fraction) %>% 
-      summarize(value=sum(value)) %>% 
+      summarize(value=sum(value,na.rm=T)) %>% 
       ungroup()
   }else{
     data2plot=data2plot %>% 
       filter(metierId==metierNum) %>% 
-      mutate(metierId=factor(metierId,metierNames$metierId,labels=metierNames$name))
+      mutate(metierId=factor(metierId,metierNames$metierId,labels=metierNames$name)) %>% 
+      group_by(PopId,time,metierId,layer,Long,Lat,Fraction) %>% 
+      summarize(value=sum(value,na.rm=T)) %>% 
+      ungroup()
   }
   
   if(!gif){
@@ -635,212 +698,327 @@ getExplicitCatchMap = function(data2process,popNum=0,timeStep=1,metierNum=0,frac
 #   }
 # }
 
-##################
-###
-###CREATE ONE EFFORT MAP GIF FOR THE WHOLE FISHERY OR PER METIER, ONE FRAME BEING A MONTH (AT THE SAMLLEST SCALE), FOR DIFFERENT AGGREGATION SCALES (NODE,RECT STAT, RTI RECTANGLE)
-###
-##################
+# data2process=implicitCatchSpatial
+# popNum=7
+# timeStep=0
+# fractionName="Landings"
+# aggScale="year"
+# resScale="All"
+# gif=F
+# 
+# sce
 
-# Per node
-getmapEffortNodeAll=function(VesselVmsLikeCond,gif=FALSE,idMetier=0,monthNum=1,scename=""){ # 3 sec per metier for one year
-  plotrange = rbind(range(VesselVmsLikeCond$Long),range(VesselVmsLikeCond$Lat))
-  if(is.na(idMetier)) {
-    VesselVmsLikeCond$metierId="whole fishery"
-    idMetier="whole fishery"
-  }
-  if(is.na(monthNum) & !gif){
-    VesselVmsLikeCond$month="all months cumulated"
-    monthNum="all months cumulated"
-  } 
-  
-  VesselVmsLikeCond = VesselVmsLikeCond %>% 
-    filter(metierId==idMetier) %>%  # Still selects the whole fishery or all time steps if that's what's wanted
-    group_by(NodeId,Long,Lat,month,metierId) %>% 
-    summarize(effort=sum(effort, na.rm = TRUE)) %>% 
-    filter(effort>0)
-  
-  if(!gif){
-    maxScale = max(VesselVmsLikeCond$effort)
-    VesselVmsLikeCond = VesselVmsLikeCond %>% 
-      filter(month==monthNum)  # Still selects the whole fishery or all time steps if that's what's wanted
+getImplicitCatchMap = function(data2process,popNum=0,timeStep=1,fractionName="Landings",sce=sce,aggScale="month",resScale="All",gif=F){
+  # Will be done in the argument, the use will have to be careful
+  if(resScale=="All"){
+    data2plot=data2process %>% 
+      rename(layer=NodeId)
+  }else{
+    data2plot=data2process %>% 
+      rename(Long=x,Lat=y)
   }
   
-  if(gif){
-    maxScale = max(VesselVmsLikeCond$effort)
-    mapEffortNode = VesselVmsLikeCond %>% 
-      ggplot(aes(x=Long,y=Lat,colour=effort, group=seq_along(month)))+
-      geom_point(size=1)+
-      scale_colour_gradientn(colours = viridis(7),limits=c(0,maxScale))+
-      labs(x="Longitude",y="Latitude",colour="Effort\n(hours)",title=paste("Fishing effort month {frame} ", " metier ",idMetier,"\n",scename,sep=""))+
-      expand_limits(x=plotrange[1,],y=plotrange[2,])+
-      theme_minimal()+
-      theme(axis.title.y=element_text(angle=0,vjust=0.5))+ 
-      transition_manual(month)
-    
-    plotMapAnim = animate(mapEffortNode, renderer = gifski_renderer(),duration=length(unique(VesselVmsLikeCond$month))/4, nframes=length(unique(VesselVmsLikeCond$month)),height=800,width=800,units="px",res=100)
-    
-    if(idMetier=="whole fishery") anim_save(animation=plotMapAnim,filename=paste("effort_All.gif",sep=""),path=paste(general$main.path,general$case_study,sce,"output",sep="/"))
-    if(idMetier!="whole fishery") anim_save(animation=plotMapAnim,filename=paste("effort_All_",idMetier,".gif",sep=""),path=paste(general$main.path,general$case_study,sce,"output",sep="/"))
-  }
+  data2plot = data2plot %>% 
+    mutate(Fraction=fct_recode(Fraction,"Landings"="Catches")) %>% 
+    filter(PopId==popNum) %>% 
+    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
+    mutate(PopId=droplevels(PopId))
   
-  if(!gif){
-    mapEffortNode =VesselVmsLikeCond %>% 
-      ggplot(aes(x=Long,y=Lat,colour=effort))+
-      geom_point(size=1)+
-      scale_colour_gradientn(colours = viridis(7),limits=c(0,maxScale))+
-      labs(x="Longitude",y="Latitude",colour="Effort\n(hours)",title=paste("Fishing effort month ",monthNum," metier ",idMetier,"\n",scename,sep=""))+
-      expand_limits(x=plotrange[1,],y=plotrange[2,])+
-      theme_minimal()+
-      theme(axis.title.y=element_text(angle=0,vjust=0.5))
-    return(mapEffortNode)
-  }
-}
-
-
-# Per RTI rectangle
-preconditionRTI = function(VesselVmsLikeCond,RTIrectangle){
-  mapEffortRTI = VesselVmsLikeCond %>% 
-    group_by(icesrectanglecode,month,metierId) %>% 
-    summarize(effort=sum(effort)) %>% 
-    rename(layer=icesrectanglecode) %>% 
+  if(aggScale=="month")data2plot$time= data2plot$month
+  if(aggScale=="year")data2plot$time= data2plot$year
+  
+  plotrange = rbind(range(data2plot$Long),range(data2plot$Lat))
+  data2plot = data2plot %>% 
+    group_by(PopId,time,layer,Long,Lat,Fraction) %>% 
+    summarize(value=sum(value,na.rm=T)) %>% 
     ungroup() %>% 
-    select(c(layer,effort,month,metierId))
-  
-  polygonsRTI=RTIrectangle %>% 
-    merge(mapEffortRTI,by=c("layer"),all.x=T)
-  return(polygonsRTI)
-}
-
-getmapEffortRTIAll=function(polygonsRTI,gif=FALSE,idMetier=0,monthNum=1,scename=""){ #if metier is NA : do the whole fishery instead
-  
-  plotrange = rbind(range(polygonsRTI$x),range(polygonsRTI$y))
-  if(is.na(idMetier)) {
-    polygonsRTI$metierId="whole fishery"
-    idMetier="whole fishery"
-  }
-  if(is.na(monthNum) & !gif){
-    polygonsRTI$month="all months cumulated"
-    monthNum="all months cumulated"
-  } 
-  
-  polygonsRTI = polygonsRTI %>% 
-    filter(metierId==idMetier) %>%  # Still selects the whole fishery or all time steps if that's what's wanted
-    group_by(layer,x,y,month,metierId) %>% 
-    summarize(effort=sum(effort, na.rm = TRUE)) %>% 
-    filter(effort>0)
+    mutate(value=replace(value,value<0,0))
   
   if(!gif){
-    maxScale = max(polygonsRTI$effort)
-    polygonsRTI = polygonsRTI %>% 
-      filter(month==monthNum)  # Still selects the whole fishery or all time steps if that's what's wanted
-  }
-  
-  if(gif){
-    maxScale = max(polygonsRTI$effort)
-    mapEffortRTITemp = polygonsRTI %>% 
-      ggplot(aes(x=x,y=y,fill=effort, group=seq_along(month)))+
-      geom_tile(colour="black",width=0.5,height=0.25)+
-      scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
-      labs(x="Longitude",y="Latitude",fill="Effort\n(hours)",title=paste("Fishing effort month {frame} ", " metier ",idMetier,"\n",scename ,sep=""))+
-      expand_limits(x=plotrange[1,],y=plotrange[2,])+
-      theme_minimal()+
-      theme(axis.title.y=element_text(angle=0,vjust=0.5))+ 
-      transition_manual(month)
+    maxScale = max(data2plot$value[data2plot$Fraction==fractionName & data2plot$time == timeStep]) # Metier selection done previously
     
-    plotMapAnim = animate(mapEffortRTITemp, renderer = gifski_renderer(),duration=length(unique(VesselVmsLikeCond$month))/4, nframes=length(unique(VesselVmsLikeCond$month)),height=800,width=800,units="px",res=100)
-    
-    if(idMetier=="whole fishery") anim_save(animation=plotMapAnim,filename=paste("effort_RTIcell_All.gif",sep=""),path=paste(general$main.path,general$case_study,sce,"output",sep="/"))
-    if(idMetier!="whole fishery") anim_save(animation=plotMapAnim,filename=paste("effort_RTIcell_All_",idMetier,".gif",sep=""),path=paste(general$main.path,general$case_study,sce,"output",sep="/"))
+    if(resScale=="All"){
+      data2plot = data2plot%>% 
+        filter(time==timeStep & Fraction==fractionName & value>0) %>% # Metier selection done previously
+        ggplot(aes(x=Long,y=Lat,colour=value))+
+        geom_point(size=1)+
+        scale_colour_gradientn(colours = viridis(7),limits=c(0,maxScale))+
+        labs(x="Longitude",y="Latitude",colour=paste(fractionName,"\n(tons)",sep=""),title=paste("Implicit ",fractionName," ",levels(data2plot$PopId)," ",aggScale," ",timeStep,"\n",sce ,sep=""))+
+        expand_limits(x=plotrange[1,],y=plotrange[2,])+
+        theme_minimal()+
+        theme(axis.title.y=element_text(angle=0,vjust=0.5))
+    }
+    if(resScale=="RTI"){
+      data2plot = data2plot%>% 
+        filter(time==timeStep & Fraction==fractionName & value>0) %>% # Metier selection done previously
+        ggplot(aes(x=Long,y=Lat,fill=value))+
+        geom_tile(width=0.5,height=0.25,colour="black")+
+        scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
+        labs(x="Longitude",y="Latitude",fill=paste(fractionName,"\n(tons)",sep=""),title=paste("Implicit ",fractionName," ",levels(data2plot$PopId)," ",aggScale," ",timeStep,"\n",sce ,sep=""))+
+        expand_limits(x=plotrange[1,],y=plotrange[2,])+
+        theme_minimal()+
+        theme(axis.title.y=element_text(angle=0,vjust=0.5))
+    }
+    if(resScale=="ICES"){
+      data2plot = data2plot%>% 
+        filter(time==timeStep & Fraction==fractionName & value>0) %>% # Metier selection done previously
+        ggplot(aes(x=Long,y=Lat,fill=value))+
+        geom_tile(width=1,height=0.5,colour="black")+
+        scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
+        labs(x="Longitude",y="Latitude",fill=paste(fractionName,"\n(tons)",sep=""),title=paste("Implicit ",fractionName," ",levels(data2plot$PopId)," ",aggScale," ",timeStep,"\n",sce ,sep=""))+
+        expand_limits(x=plotrange[1,],y=plotrange[2,])+
+        theme_minimal()+
+        theme(axis.title.y=element_text(angle=0,vjust=0.5))
+    }
+    return(data2plot)
   }
-  
-  if(!gif){
-    mapEffortRTITemp =polygonsRTI %>% 
-      ggplot(aes(x=x,y=y,fill=effort))+
-      geom_tile(colour="black",width=0.5,height=0.25)+
-      scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
-      labs(x="Longitude",y="Latitude",fill="Effort\n(hours)",title=paste("Fishing effort month ",monthNum," metier ",idMetier,"\n",scename,sep=""))+
-      expand_limits(x=plotrange[1,],y=plotrange[2,])+
-      theme_minimal()+
-      theme(axis.title.y=element_text(angle=0,vjust=0.5))
-    return(mapEffortRTITemp)
+  if (gif){
+    maxScale = max(data2plot$value[data2plot$Fraction==fractionName]) # Metier selection done previously
+    
+    if(resScale=="All"){
+      plotMap = data2plot%>% 
+        filter(Fraction==fractionName & value>0) %>% # Metier selection done previously
+        ggplot(aes(x=Long,y=Lat,colour=value, group=seq_along(time)))+
+        geom_point(size=1)+
+        scale_colour_gradientn(colours = viridis(7),limits=c(0,maxScale))+
+        labs(x="Longitude",y="Latitude",colour=paste(fractionName,"\n(tons)",sep=""),title=paste("Implicit ",fractionName," ",levels(data2plot$PopId)," ",aggScale," {frame}\n",sce ,sep=""))+
+        expand_limits(x=plotrange[1,],y=plotrange[2,])+
+        theme_minimal()+
+        theme(axis.title.y=element_text(angle=0,vjust=0.5))+
+        transition_manual(time)
+    }
+    if(resScale=="RTI"){
+      plotMap = data2plot%>% 
+        filter(Fraction==fractionName & value>0) %>% # Metier selection done previously
+        ggplot(aes(x=Long,y=Lat,fill=value, group=seq_along(time)))+
+        geom_tile(width=0.5,height=0.25,colour="black")+
+        scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
+        labs(x="Longitude",y="Latitude",fill=paste(fractionName,"\n(tons)",sep=""),title=paste("Implicit ",fractionName," ",levels(data2plot$PopId)," ",aggScale," {frame}\n",sce ,sep=""))+
+        expand_limits(x=plotrange[1,],y=plotrange[2,])+
+        theme_minimal()+
+        theme(axis.title.y=element_text(angle=0,vjust=0.5))+
+        transition_manual(time)
+    }
+    if(resScale=="ICES"){
+      plotMap = data2plot%>% 
+        filter(Fraction==fractionName & value>0) %>% # Metier selection done previously
+        ggplot(aes(x=Long,y=Lat,fill=value, group=seq_along(time)))+
+        geom_tile(width=1,height=0.5,colour="black")+
+        scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
+        labs(x="Longitude",y="Latitude",fill=paste(fractionName,"\n(tons)",sep=""),title=paste("Implicit ",fractionName," ",levels(data2plot$PopId)," ",aggScale," {frame}\n",sce ,sep=""))+
+        expand_limits(x=plotrange[1,],y=plotrange[2,])+
+        theme_minimal()+
+        theme(axis.title.y=element_text(angle=0,vjust=0.5))+
+        transition_manual(time)
+    }
+    
+    if(aggScale=="month") plotMapAnim = animate(plotMap, renderer = gifski_renderer(),duration=round(length(unique(data2plot$time))/4), nframes=length(unique(data2plot$time)),height=800,width=800,units="px",res=100)
+    if(aggScale=="year") plotMapAnim = animate(plotMap, renderer = gifski_renderer(),duration=length(unique(data2plot$time)), nframes=length(unique(data2plot$time)),height=800,width=800,units="px",res=100)
+    
+    if(resScale=="All") anim_save(animation=plotMapAnim,filename=paste("implicit_",fractionName,"_pop",popNum,"_",aggScale,timeStep,"_All.gif",sep=""),path=paste(general$main.path,general$case_study,sce,"output",sep="/"))
+    if(resScale=="RTI") anim_save(animation=plotMapAnim,filename=paste("implicit_",fractionName,"_pop",popNum,"_",aggScale,timeStep,"_RTI.gif",sep=""),path=paste(general$main.path,general$case_study,sce,"output",sep="/"))
+    if(resScale=="ICES") anim_save(animation=plotMapAnim,filename=paste("implicit_",fractionName,"_pop",popNum,"_",aggScale,timeStep,"_ICES.gif",sep=""),path=paste(general$main.path,general$case_study,sce,"output",sep="/"))
+    
   }
 }
 
+# #Test Options
+# popNum=7
+# for(fractionName in c("Landings","Discards")){
+#   for(aggScale in c("month","year")){
+#     timeStep=1
+#     if (aggScale=="year")timeStep = timeStep-1
+#     for(resScale in c("All","RTI","ICES")){
+#       if (resScale=="All"){ 
+#         data2process = implicitCatchSpatial
+#         png(filename=paste(general$main.path,"/",general$case_study,"/",sce,"/output/implicit_",fractionName,"_pop",popNum,"_",aggScale,timeStep,"_All.png",sep=""),height=800,width=800,units="px",res=100)
+#       }
+#       if (resScale=="ICES"){ 
+#         data2process = implicitCatchSpatialICES
+#         png(filename=paste(general$main.path,"/",general$case_study,"/",sce,"/output/implicit_",fractionName,"_pop",popNum,"_",aggScale,timeStep,"_ICES.png",sep=""),height=800,width=800,units="px",res=100)
+#       }
+#       if (resScale=="RTI"){ 
+#         data2process = implicitCatchSpatialRTI
+#         png(filename=paste(general$main.path,"/",general$case_study,"/",sce,"/output/implicit_",fractionName,"_pop",popNum,"_",aggScale,timeStep,"_RTI.png",sep=""),height=800,width=800,units="px",res=100)
+#       }
+#       print(getImplicitCatchMap(data2process,popNum,timeStep,fractionName,sce,aggScale,resScale,gif=F))
+#       dev.off()
+#     }
+#   }
+# }
+# 
+# for(fractionName in c("Landings","Discards")){
+#   for(aggScale in c("month","year")){
+#     timeStep=1
+#     if (aggScale=="year")timeStep = timeStep-1
+#     for(resScale in c("All","RTI","ICES")){
+#       if (resScale=="All") data2process = implicitCatchSpatial
+#       if (resScale=="ICES") data2process = implicitCatchSpatialICES
+#       if (resScale=="RTI") data2process = implicitCatchSpatialRTI
+#       getImplicitCatchMap(data2process,popNum,timeStep,fractionName,sce,aggScale,resScale,gif=T)
+#     }
+#   }
+# }
 
-# Per ICES rectangle
-preconditionICES = function(VesselVmsLikeCond,icesquarterrectangle){
-  mapEffortICES = VesselVmsLikeCond %>% 
+
+# popNum=7
+# timeStep=0
+# fractionName="Landings"
+# aggScale="year"
+# resScale="All"
+# gif=F
+# 
+# sce
+
+getAllCatchMap = function(data2process,popNum=0,timeStep=1,fractionName="Landings",sce=sce,aggScale="month",resScale="All",gif=F){
+  # Will be done in the argument, the use will have to be careful
+  if(resScale=="All"){
+    data2plot=data2process %>% 
+      rename(layer=NodeId)
+  }else{
+    data2plot=data2process %>% 
+      rename(Long=x,Lat=y)
+  }
+  
+  data2plot = data2plot %>% 
+    mutate(Fraction=fct_recode(Fraction,"Landings"="Catches")) %>% 
+    filter(PopId==popNum) %>% 
+    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
+    mutate(PopId=droplevels(PopId))
+  
+  if(aggScale=="month")data2plot$time= data2plot$month
+  if(aggScale=="year")data2plot$time= data2plot$year
+  
+  plotrange = rbind(range(data2plot$Long),range(data2plot$Lat))
+  data2plot = data2plot %>% 
+    group_by(PopId,time,layer,Long,Lat,Fraction) %>% 
+    summarize(value=sum(value,na.rm=T)) %>% 
     ungroup() %>% 
-    mutate(icesrectanglecode=as.numeric(substr(as.character(icesrectanglecode),1,4))) %>% 
-    group_by(icesrectanglecode,month,metierId) %>% 
-    summarize(effort=sum(effort)) %>% 
-    rename(layer=icesrectanglecode) %>% 
-    ungroup() %>% 
-    select(c(layer,effort,month,metierId))
-  
-  polygonsICES=icesquarterrectangle %>% 
-    merge(mapEffortICES,by=c("layer"),all.x=T)
-  
-  return(polygonsICES)
-}
-
-getmapEffortICESAll=function(polygonsICES,gif=FALSE,idMetier=0,monthNum=1,scename=""){ # 3 sec per metier for one year
-  # monthNum=NA
-  # idMetier=NA
-  # gif=F
-  plotrange = rbind(range(polygonsICES$x),range(polygonsICES$y))
-  if(is.na(idMetier)) {
-    polygonsICES$metierId="whole fishery"
-    idMetier="whole fishery"
-  }
-  if(is.na(monthNum) & !gif){
-    polygonsICES$month="all months cumulated"
-    monthNum="all months cumulated"
-  } 
-  
-  polygonsICES = polygonsICES %>% 
-    filter(metierId==idMetier) %>%  # Still selects the whole fishery or all time steps if that's what's wanted
-    group_by(layer,x,y,month,metierId) %>% 
-    summarize(effort=sum(effort, na.rm = TRUE)) %>% 
-    filter(effort>0)
+    mutate(value=replace(value,value<0,0))
   
   if(!gif){
-    maxScale = max(polygonsICES$effort)
-    polygonsICES = polygonsICES %>% 
-      filter(month==monthNum)  # Still selects the whole fishery or all time steps if that's what's wanted
-  }
-  
-  if(gif){
-    maxScale = max(polygonsICES$effort)
-    mapEffortICESTemp = polygonsICES %>% 
-      ggplot(aes(x=x,y=y,fill=effort, group=seq_along(month)))+
-      geom_tile(colour="black",width=1,height=0.5)+
-      scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
-      labs(x="Longitude",y="Latitude",fill="Effort\n(hours)",title=paste("Fishing effort month {frame} ", " metier ",idMetier,"\n",scename ,sep=""))+
-      expand_limits(x=plotrange[1,],y=plotrange[2,])+
-      theme_minimal()+
-      theme(axis.title.y=element_text(angle=0,vjust=0.5))+ 
-      transition_manual(month)
+    maxScale = max(data2plot$value[data2plot$Fraction==fractionName & data2plot$time == timeStep]) # Metier selection done previously
     
-    plotMapAnim = animate(mapEffortICESTemp, renderer = gifski_renderer(),duration=length(unique(VesselVmsLikeCond$month))/4, nframes=length(unique(VesselVmsLikeCond$month)),height=800,width=800,units="px",res=100)
-    
-    if(idMetier=="whole fishery") anim_save(animation=plotMapAnim,filename=paste("effort_ICEScell_All.gif",sep=""),path=paste(general$main.path,general$case_study,sce,"output",sep="/"))
-    if(idMetier!="whole fishery") anim_save(animation=plotMapAnim,filename=paste("effort_ICEScell_All_",idMetier,".gif",sep=""),path=paste(general$main.path,general$case_study,sce,"output",sep="/"))
+    if(resScale=="All"){
+      data2plot = data2plot%>% 
+        filter(time==timeStep & Fraction==fractionName & value>0) %>% # Metier selection done previously
+        ggplot(aes(x=Long,y=Lat,colour=value))+
+        geom_point(size=1)+
+        scale_colour_gradientn(colours = viridis(7),limits=c(0,maxScale))+
+        labs(x="Longitude",y="Latitude",colour=paste(fractionName,"\n(tons)",sep=""),title=paste("All ",fractionName," ",levels(data2plot$PopId)," ",aggScale," ",timeStep,"\n",sce ,sep=""))+
+        expand_limits(x=plotrange[1,],y=plotrange[2,])+
+        theme_minimal()+
+        theme(axis.title.y=element_text(angle=0,vjust=0.5))
+    }
+    if(resScale=="RTI"){
+      data2plot = data2plot%>% 
+        filter(time==timeStep & Fraction==fractionName & value>0) %>% # Metier selection done previously
+        ggplot(aes(x=Long,y=Lat,fill=value))+
+        geom_tile(width=0.5,height=0.25,colour="black")+
+        scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
+        labs(x="Longitude",y="Latitude",fill=paste(fractionName,"\n(tons)",sep=""),title=paste("All ",fractionName," ",levels(data2plot$PopId)," ",aggScale," ",timeStep,"\n",sce ,sep=""))+
+        expand_limits(x=plotrange[1,],y=plotrange[2,])+
+        theme_minimal()+
+        theme(axis.title.y=element_text(angle=0,vjust=0.5))
+    }
+    if(resScale=="ICES"){
+      data2plot = data2plot%>% 
+        filter(time==timeStep & Fraction==fractionName & value>0) %>% # Metier selection done previously
+        ggplot(aes(x=Long,y=Lat,fill=value))+
+        geom_tile(width=1,height=0.5,colour="black")+
+        scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
+        labs(x="Longitude",y="Latitude",fill=paste(fractionName,"\n(tons)",sep=""),title=paste("All ",fractionName," ",levels(data2plot$PopId)," ",aggScale," ",timeStep,"\n",sce ,sep=""))+
+        expand_limits(x=plotrange[1,],y=plotrange[2,])+
+        theme_minimal()+
+        theme(axis.title.y=element_text(angle=0,vjust=0.5))
+    }
+    return(data2plot)
   }
-  
-  if(!gif){
-    mapEffortICESTemp =polygonsICES %>% 
-      ggplot(aes(x=x,y=y,fill=effort))+
-      geom_tile(colour="black",width=1,height=0.5)+
-      scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
-      labs(x="Longitude",y="Latitude",fill="Effort\n(hours)",title=paste("Fishing effort month ",monthNum," metier ",idMetier,"\n",scename,sep=""))+
-      expand_limits(x=plotrange[1,],y=plotrange[2,])+
-      theme_minimal()+
-      theme(axis.title.y=element_text(angle=0,vjust=0.5))
-    return(mapEffortICESTemp)
+  if (gif){
+    maxScale = max(data2plot$value[data2plot$Fraction==fractionName]) # Metier selection done previously
+    
+    if(resScale=="All"){
+      plotMap = data2plot%>% 
+        filter(Fraction==fractionName & value>0) %>% # Metier selection done previously
+        ggplot(aes(x=Long,y=Lat,colour=value, group=seq_along(time)))+
+        geom_point(size=1)+
+        scale_colour_gradientn(colours = viridis(7),limits=c(0,maxScale))+
+        labs(x="Longitude",y="Latitude",colour=paste(fractionName,"\n(tons)",sep=""),title=paste("All ",fractionName," ",levels(data2plot$PopId)," ",aggScale," {frame}\n",sce ,sep=""))+
+        expand_limits(x=plotrange[1,],y=plotrange[2,])+
+        theme_minimal()+
+        theme(axis.title.y=element_text(angle=0,vjust=0.5))+
+        transition_manual(time)
+    }
+    if(resScale=="RTI"){
+      plotMap = data2plot%>% 
+        filter(Fraction==fractionName & value>0) %>% # Metier selection done previously
+        ggplot(aes(x=Long,y=Lat,fill=value, group=seq_along(time)))+
+        geom_tile(width=0.5,height=0.25,colour="black")+
+        scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
+        labs(x="Longitude",y="Latitude",fill=paste(fractionName,"\n(tons)",sep=""),title=paste("All ",fractionName," ",levels(data2plot$PopId)," ",aggScale," {frame}\n",sce ,sep=""))+
+        expand_limits(x=plotrange[1,],y=plotrange[2,])+
+        theme_minimal()+
+        theme(axis.title.y=element_text(angle=0,vjust=0.5))+
+        transition_manual(time)
+    }
+    if(resScale=="ICES"){
+      plotMap = data2plot%>% 
+        filter(Fraction==fractionName & value>0) %>% # Metier selection done previously
+        ggplot(aes(x=Long,y=Lat,fill=value, group=seq_along(time)))+
+        geom_tile(width=1,height=0.5,colour="black")+
+        scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
+        labs(x="Longitude",y="Latitude",fill=paste(fractionName,"\n(tons)",sep=""),title=paste("All ",fractionName," ",levels(data2plot$PopId)," ",aggScale," {frame}\n",sce ,sep=""))+
+        expand_limits(x=plotrange[1,],y=plotrange[2,])+
+        theme_minimal()+
+        theme(axis.title.y=element_text(angle=0,vjust=0.5))+
+        transition_manual(time)
+    }
+    
+    if(aggScale=="month") plotMapAnim = animate(plotMap, renderer = gifski_renderer(),duration=round(length(unique(data2plot$time))/4), nframes=length(unique(data2plot$time)),height=800,width=800,units="px",res=100)
+    if(aggScale=="year") plotMapAnim = animate(plotMap, renderer = gifski_renderer(),duration=length(unique(data2plot$time)), nframes=length(unique(data2plot$time)),height=800,width=800,units="px",res=100)
+    
+    if(resScale=="All") anim_save(animation=plotMapAnim,filename=paste("all_",fractionName,"_pop",popNum,"_",aggScale,timeStep,"_All.gif",sep=""),path=paste(general$main.path,general$case_study,sce,"output",sep="/"))
+    if(resScale=="RTI") anim_save(animation=plotMapAnim,filename=paste("all_",fractionName,"_pop",popNum,"_",aggScale,timeStep,"_RTI.gif",sep=""),path=paste(general$main.path,general$case_study,sce,"output",sep="/"))
+    if(resScale=="ICES") anim_save(animation=plotMapAnim,filename=paste("all_",fractionName,"_pop",popNum,"_",aggScale,timeStep,"_ICES.gif",sep=""),path=paste(general$main.path,general$case_study,sce,"output",sep="/"))
+    
   }
 }
 
-# getmapEffortNodeAll(VesselVmsLikeCond,gif=FALSE,idMetier=10,monthNum=1)
-# getmapEffortRTIAll(polygonsRTI,gif=FALSE,idMetier=NA,monthNum=10)
-# getmapEffortICESAll(polygonsICES,gif=FALSE,idMetier=NA,monthNum=10)
+# #Test Options
+# popNum=7
+# for(fractionName in c("Landings","Discards")){
+#   for(aggScale in c("month","year")){
+#     timeStep=1
+#     if (aggScale=="year")timeStep = timeStep-1
+#     for(resScale in c("All","RTI","ICES")){
+#       if (resScale=="All"){
+#         data2process = allCatchSpatial
+#         png(filename=paste(general$main.path,"/",general$case_study,"/",sce,"/output/all_",fractionName,"_pop",popNum,"_",aggScale,timeStep,"_All.png",sep=""),height=800,width=800,units="px",res=100)
+#       }
+#       if (resScale=="ICES"){
+#         data2process = allCatchSpatialICES
+#         png(filename=paste(general$main.path,"/",general$case_study,"/",sce,"/output/all_",fractionName,"_pop",popNum,"_",aggScale,timeStep,"_ICES.png",sep=""),height=800,width=800,units="px",res=100)
+#       }
+#       if (resScale=="RTI"){
+#         data2process = allCatchSpatialRTI
+#         png(filename=paste(general$main.path,"/",general$case_study,"/",sce,"/output/all_",fractionName,"_pop",popNum,"_",aggScale,timeStep,"_RTI.png",sep=""),height=800,width=800,units="px",res=100)
+#       }
+#       print(getAllCatchMap(data2process,popNum,timeStep,fractionName,sce,aggScale,resScale,gif=F))
+#       dev.off()
+#     }
+#   }
+# }
+# 
+# for(fractionName in c("Landings","Discards")){
+#   for(aggScale in c("month","year")){
+#     timeStep=1
+#     if (aggScale=="year")timeStep = timeStep-1
+#     for(resScale in c("All","RTI","ICES")){
+#       if (resScale=="All") data2process = allCatchSpatial
+#       if (resScale=="ICES") data2process = allCatchSpatialICES
+#       if (resScale=="RTI") data2process = allCatchSpatialRTI
+#       getAllCatchMap(data2process,popNum,timeStep,fractionName,sce,aggScale,resScale,gif=T)
+#     }
+#   }
+# }
+
