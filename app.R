@@ -15,6 +15,21 @@ shinyOptions(shiny.autoreload = TRUE)
 shinyOptions(shiny.launch.browser = TRUE)
 
 ## Source R scripts
+source("R-scripts/setGeneralVariable.R", local = TRUE)
+general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displace/", paste0("DISPLACE_input_gis_","CelticSea")),
+                                      pathToDisplaceInputs = file.path("D:/work/Displace/", paste0("DISPLACE_input_","CelticSea")),
+                                      pathToOutputs =file.path("D:","DISPLACE_outputs"),
+                                      caseStudy="CelticSea",
+                                      iGraph=3,
+                                      iYear="2010", # Beginning of time series
+                                      iYearEnd="2020", # End of time series
+                                      iCountry=NULL, #???
+                                      nbPops=27,
+                                      nbSzgroup=14,
+                                      theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
+                                      nbSimus=20,
+                                      useSQLite=FALSE)
+
 source("R-scripts/getBiomassPlots.R", local = TRUE)
 source("R-scripts/getCatchPlots.R", local = TRUE)
 source("R-scripts/getEffortPlots.R", local = TRUE)
@@ -24,7 +39,8 @@ source("R-scripts/polygonPlotsFromPopDynFiles.R", local = TRUE)
 source("R-scripts/helperFunctions.R", local = TRUE)
 source("R-scripts/barplotLanDisPerScenario.R", local = TRUE)
 source("R-scripts/responseCurvesSBBandF.R", local = TRUE)
-source("R-scripts/setGeneralVariable.R", local = TRUE)
+
+
 
 sbox <- shinydashboard::box
 outputLocation <- "D:/DISPLACE_outputs/CelticSea/data"
@@ -104,21 +120,6 @@ convertMenuItem <- function(tabName, mi) {
   mi$children[[1]]$attribs['data-value'] = tabName
   mi
 }
-
-general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displace/", paste0("DISPLACE_input_gis_","CelticSea")),
-                                      pathToDisplaceInputs = file.path("D:/work/Displace/", paste0("DISPLACE_input_","CelticSea")),
-                                      pathToOutputs =file.path("D:","DISPLACE_outputs"),
-                                      caseStudy="CelticSea",
-                                      iGraph=3,
-                                      iYear="2010", # Beginning of time series
-                                      iYearEnd="2020", # End of time series
-                                      iCountry=NULL, #???
-                                      nbPops=27,
-                                      nbSzgroup=14,
-                                      theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
-                                      nbSimus=20,
-                                      useSQLite=FALSE)
-
 
 ## User interface ----
 ui <- dashboardPage(
