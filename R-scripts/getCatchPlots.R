@@ -22,7 +22,7 @@
 # library(viridis) # colour-blind friendly palettes
 # # library(displaceplot) # Some functions exist to produce some plots, but not the ones I'm looking for.
 # # library(help=displaceplot)
-# source("D:/work/Displace/DISPLACE_RShiny_plots/R-scripts/setGeneralVariable.R", local = TRUE)
+#source("D:/work/Displace/DISPLACE_RShiny_plots/R-scripts/setGeneralVariable.R", local = TRUE)
 
 ##################
 ###
@@ -43,8 +43,8 @@
 #                                       theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
 #                                       nbSimus=20,
 #                                       useSQLite=FALSE)
+# explicit_pops = 0:(general$nbpops-1)
 
-#load(file=paste(general$main.path,general$case_study,general$namefolderoutput[1],"output/forEffortPlots.Rdata",sep="/"))
 ##################
 ###
 ###END INPUTS
@@ -58,12 +58,12 @@
 ##################
 
 # sce=general$namefolderoutput[1]
-# myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2]),"_out.db",sep=""))
+# myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
 # dbListTables(myConn)
 # 
 # PopValues = dbGetQuery(myConn,"SELECT * FROM PopValues") # To get Cumulated catch per population
 # VesselLogLike = dbGetQuery(myConn,"SELECT * FROM VesselLogLike") # time at sea for each vessel/metier/trip/harbour (NodeId is the harbour, not the fishing location) . But no fishing time?
-# VesselLogLikeCatches = dbGetQuery(myConn,"SELECT * FROM VesselLogLikeCatches") 
+# VesselLogLikeCatches = dbGetQuery(myConn,"SELECT * FROM VesselLogLikeCatches")
 # VesselVmsLike = dbGetQuery(myConn,"SELECT * FROM VesselVmsLike") # State (including fishing (1), steaming (2) and harbour (3)) for each vessel/node/time step . In theory enough to get the information on effort I want, BUT it's only for 1 year (the first one).... Is it 2 hours slice I have, and not the actual effort? Ask.
 # NodesDef = dbGetQuery(myConn,"SELECT * FROM NodesDef") # Get nodes coordinates, ICES rectangle and RTI rectangle (all coded in icesrectanglecode)
 # NodesStat = dbGetQuery(myConn,"SELECT * FROM NodesStat")
@@ -76,29 +76,29 @@
 ###
 ##################
 
-##################
-# Prepare dataset
-
+# ##################
+# # Prepare dataset
+# 
 # getStockNames = function(){
 #   codes=read.table(file=paste(general$main.path.ibm, "/pop_names_CelticSea.txt",sep=""),header=T)
-#   stockNames=read.table(file=paste(general$main.path.param,"/POPULATIONS/Stock_biological_traits.csv",sep=""),header=T,sep=",") %>% 
-#     select(c(stock,species)) %>% 
-#     rename(spp=stock) %>% 
-#     merge(codes,by=c("spp")) %>% 
+#   stockNames=read.table(file=paste(general$main.path.param,"/POPULATIONS/Stock_biological_traits.csv",sep=""),header=T,sep=",") %>%
+#     select(c(stock,species)) %>%
+#     rename(spp=stock) %>%
+#     merge(codes,by=c("spp")) %>%
 #     rename(PopId=idx)
 # }
 # 
-# stockNames = getStockNames() %>% 
+# stockNames = getStockNames() %>%
 #   arrange(PopId)
 # 
 # getMetierNames = function(){
-#   codes=read.table(file=paste(general$main.path.ibm, "/metiersspe_CelticSea/metier_names.dat",sep=""),header=T) %>% 
+#   codes=read.table(file=paste(general$main.path.ibm, "/metiersspe_CelticSea/metier_names.dat",sep=""),header=T) %>%
 #     rename(metierId=idx)
 # }
 # 
-# metierNames = getMetierNames() %>% 
+# metierNames = getMetierNames() %>%
 #   arrange(metierId)
-#
+# 
 # months = data.frame(TStep = sort(unique(NodesStat$TStep)), month= 1:length(sort(unique(NodesStat$TStep))))
 # months = data.frame(TStep = c(sort(unique(NodesStat$TStep)),(max(NodesStat$TStep)+100)), month= c(1:length(sort(unique(NodesStat$TStep))),length(sort(unique(NodesStat$TStep))))) # Adding one more row to avoid crashes
 # 
@@ -108,14 +108,40 @@
 # 
 # metierCorr= unique(subset(VesselLogLike, select=c(Id,metierId)))
 # 
-# VesselVmsLikeCond = VesselVmsLike %>%  # Pb: VesselLogLike's NodeId is the harbour, not the actual fishing location. get the fishing location here
+# fishingLocations = VesselVmsLike %>% 
 #   filter(State==1) %>% 
+#   select(-c(Course,CumFuel,State,TStep)) %>% 
+#   group_by(Id,TStepDep,Long,Lat) %>% 
+#   summarize(effort=n()) %>% 
 #   group_by(Id,TStepDep) %>% 
-#   filter(TStep==max(TStep)) %>% 
+#   mutate(prop=effort/sum(effort))
+# 
+# catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+# names(catchAndEffortPertrip)= c('TStepDep', 'TStep', 'reason_back','cumsteaming', 'idx_node',  'Id', 'VE_REF', 'timeatsea', 'fuelcons', 'traveled_dist',  paste('pop.', 0:(general$nbpops-1), sep=''), "freq_metiers", "revenue", "rev_from_av_prices", "rev_explicit_from_av_prices", "fuelcost", "vpuf", "gav", "gradva","sweptr", "revpersweptarea",  paste('disc_',  explicit_pops, sep=''), "GVA", "GVAPerRevenue", "LabourSurplus", "GrossProfit", "NetProfit",  "NetProfitMargin", "GVAPerFTE", "RoFTA", "BER", "CRBER", "NetPresentValue", "numTrips")   
+# 
+# catchPertrip = catchAndEffortPertrip %>% 
+#   mutate(effort=TStep-TStepDep-cumsteaming) %>% # Use it for CPUE plots
+#   select(c(effort,TStep,TStepDep,Id,freq_metiers,starts_with("pop."),starts_with("disc_"))) %>% 
+#   mutate(metierId = sapply(as.character(freq_metiers), function(x) strsplit(x,split=")")[[1]][1])) %>% 
+#   mutate(metierId = as.numeric(sapply(metierId, function(x) strsplit(x,split="\\(")[[1]][2]))) %>% 
+#   select(-freq_metiers) %>% 
+#   merge(fishingLocations,by=c("Id","TStepDep"),all.y=T) %>% 
+#   #mutate(sanityCheck=abs(effort.y/prop-effort.x)) # All good, except what is cut at the end of first year. Keep effort.x and prop
+#   mutate(effort=effort.x*prop) %>% 
+#   select(-c(effort.x,effort.y)) %>% 
+#   merge(subset(NodesDef, select=c(NodeId,Long,Lat,icesrectanglecode), HarbourId==0), by=c("Long","Lat")) %>% 
+#   melt(id.vars=c("Long","Lat","Id","TStepDep","TStep","metierId","prop","effort","NodeId","icesrectanglecode")) %>% 
+#   mutate(variable=as.character(variable)) %>% 
+#   mutate(Fraction=fct_recode(factor(sapply(variable, function(x) substr(x,1,3))),"Discards"="dis","Landings"="pop")) %>% 
+#   mutate(PopId=as.numeric(unlist(regmatches(x=variable, m=gregexpr("[[:digit:]]+",variable))))) %>% 
+#   mutate(value=prop*value) %>% 
+#   group_by(Long,Lat,Id,TStep,metierId,NodeId,icesrectanglecode,Fraction,PopId) %>% 
+#   summarize(effort=sum(effort,na.rm=T),value=sum(value,na.rm=T)) %>% 
 #   ungroup() %>% 
-#   select(-c(CumFuel,Course,State)) %>%
-#   unique() %>%
-#   merge(nodes2merge,by=c("Long","Lat"))
+#   mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>x]))] )) %>% 
+#   group_by(Long,Lat,month,metierId,NodeId,icesrectanglecode,Fraction,PopId) %>%
+#   summarize(effort=sum(effort,na.rm=T),value=sum(value,na.rm=T)) %>% 
+#   ungroup()
 # 
 # #Shapefiles for ICES rectangles and RTI rectangles
 # ## Create shapefile VERIFIED, ALL NAMES MATCH THE GOOD RECTANGLES
@@ -142,6 +168,7 @@
 
 # Get implicit and explicit catch and discards for all time steps (months), metiers, pops NOT SPATIAL
 getExplicitCatch = function(VesselLogLike,VesselLogLikeCatches,months,nodes2merge){
+  
   stepLogLikeId = VesselLogLike %>% 
     select(c(RowId,TStepDep,TStep,metierId)) %>% 
     rename(LoglikeId=RowId)
@@ -155,6 +182,7 @@ getExplicitCatch = function(VesselLogLike,VesselLogLikeCatches,months,nodes2merg
   cumcatchLog = cumcatchLog %>% 
     group_by(PopId,month,metierId) %>% 
     summarise_at(c("Catches","Discards"),sum) %>% 
+    rename(Landings=Catches) %>% 
     ungroup() %>% 
     mutate(year=2010+floor((month-1)/12)) %>%
     melt(id.vars=c("PopId","month","metierId","year")) %>% 
@@ -165,28 +193,36 @@ getExplicitCatch = function(VesselLogLike,VesselLogLikeCatches,months,nodes2merg
 }
 
 #LIMITED TO 1 YEAR SO FAR BECAUS OF DISPLACE HARD CODING
-getExplicitCatchSpatial = function(VesselLogLike,VesselLogLikeCatches,months){
-  stepLogLikeId = VesselLogLike %>% 
-    select(c(RowId,TStepDep,TStep,metierId,Id)) %>% 
-    unique() %>% 
-    rename(LoglikeId=RowId)
+getExplicitCatchSpatial = function(catchPertrip){
   
-  cumcatchLog=VesselLogLikeCatches %>% 
-    merge(stepLogLikeId, by=c("LoglikeId"),all=T) %>% 
-    mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>=x]))] ))
-  # TStep is the time step at the end of the month, e.g. 745 is the end of Jan 2010
-  
-  cumcatchLog = cumcatchLog %>% 
-    merge(subset(VesselVmsLikeCond, select=-c(TStep)), by=c("Id","TStepDep"))%>% 
-    group_by(PopId,month,metierId,NodeId,icesrectanglecode,rtirectangle,Long,Lat) %>% 
-    summarise_at(c("Catches","Discards"),sum) %>% 
-    ungroup() %>% 
-    mutate(year=2010+floor((month-1)/12)) %>%
-    melt(id.vars=c("PopId","month","metierId","NodeId","icesrectanglecode","rtirectangle","Long","Lat","year")) %>% 
-    rename(Fraction=variable) %>% 
-    mutate(value=value/1000) # Convert to tons
-  
-  return(cumcatchLog)
+  catch2return = catchPertrip %>% 
+    mutate(value=value/1000) %>% # Convert to tons
+    mutate(year=floor((month-1)/12)) %>%
+    rename(rtirectangle=icesrectanglecode) %>% 
+    mutate(icesrectanglecode=as.numeric(sapply(rtirectangle, function(x) substr(x,1,4))))
+  return(catch2return)
+              
+  # stepLogLikeId = VesselLogLike %>% 
+  #   select(c(RowId,TStepDep,TStep,metierId,Id)) %>% 
+  #   unique() %>% 
+  #   rename(LoglikeId=RowId)
+  # 
+  # cumcatchLog=VesselLogLikeCatches %>% 
+  #   merge(stepLogLikeId, by=c("LoglikeId"),all=T) %>% 
+  #   mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>=x]))] ))
+  # # TStep is the time step at the end of the month, e.g. 745 is the end of Jan 2010
+  # 
+  # cumcatchLog = cumcatchLog %>% 
+  #   merge(subset(VesselVmsLikeCond, select=-c(TStep)), by=c("Id","TStepDep"))%>% 
+  #   group_by(PopId,month,metierId,NodeId,icesrectanglecode,rtirectangle,Long,Lat) %>% 
+  #   summarise_at(c("Catches","Discards"),sum) %>% 
+  #   ungroup() %>% 
+  #   mutate(year=2010+floor((month-1)/12)) %>%
+  #   melt(id.vars=c("PopId","month","metierId","NodeId","icesrectanglecode","rtirectangle","Long","Lat","year")) %>% 
+  #   rename(Fraction=variable) %>% 
+  #   mutate(value=value/1000) # Convert to tons
+  # 
+  # return(cumcatchLog)
 }
 
 getImplicitCatch = function(PopValues,explicitCatch){
@@ -218,7 +254,7 @@ getImplicitCatch = function(PopValues,explicitCatch){
     summarise_at(c("CumDiscards","CumCatches"),sum) %>%
     ungroup() %>% 
     merge(cumcatchLog, by=c("month","PopId"))%>% # Convert to tons
-    mutate(Catches =CumCatches-Catches, Discards =CumDiscards-Discards) %>% 
+    mutate(Landings =CumCatches-Landings, Discards =CumDiscards-Discards) %>% 
     select(-c(CumDiscards,CumCatches)) %>% 
     #group_by(month,PopId,year) %>% 
     melt(id.vars=c("PopId","month","year")) %>% 
@@ -260,13 +296,13 @@ getImplicitCatchSpatial = function(PopValues,explicitCatchSpatial,nodes2merge){
       filter(month ==monthNum) %>% 
       merge(subset(cumcatchLog, month==monthNum), by=c("month","PopId","NodeId"),all.x=T) %>% 
       select(-c(icesrectanglecode,rtirectangle,Long,Lat,year)) %>%  # to be redone
-      mutate(Catches=replace_na(Catches,0),Discards=replace_na(Discards,0))%>% 
+      mutate(Landings=replace_na(Landings,0),Discards=replace_na(Discards,0))%>% 
       merge(nodes2merge,by=c("NodeId")) %>% 
       mutate(year=floor((month-1)/12))
   }
   
   ImplicitCatch2 = plyr::ldply(ImplicitCatch2) %>% 
-    mutate(Catches =CumCatches-Catches, Discards =CumDiscards-Discards) %>% 
+    mutate(Landings =CumCatches-Landings, Discards =CumDiscards-Discards) %>% 
     select(-c(CumDiscards,CumCatches,TStep)) %>% 
     #group_by(month,PopId,NodeId,year,icesrectanglecode,rtirectangle,Long,Lat) %>% Useless to group it
     melt(id.vars=c("PopId","month","year","NodeId","icesrectanglecode","rtirectangle","Long","Lat")) %>% 
@@ -276,90 +312,90 @@ getImplicitCatchSpatial = function(PopValues,explicitCatchSpatial,nodes2merge){
 }
 
 
-# explicitCatch = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,nodes2merge) # Includes discards, 13 sec for 3 years 
-# explicitCatchSpatial = getExplicitCatchSpatial(VesselLogLike,VesselLogLikeCatches,months) # 18 secs for 3 years. Maybe cut year by year for longer sims? LIMITED TO ONE YEAR SO FAR BECAUSE OF DISPLACE HARD CODING 
-# implicitCatch = getImplicitCatch(PopValues,explicitCatchSpatial) # Includes discards 2' for 3 years 
+# explicitCatch = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,nodes2merge) # Includes discards, 13 sec for 3 years
+# explicitCatchSpatial = getExplicitCatchSpatial(catchPertrip) # LIMITED TO ONE YEAR SO FAR BECAUSE OF DISPLACE HARD CODING
+# implicitCatch = getImplicitCatch(PopValues,explicitCatchSpatial) # Includes discards 2' for 3 years
 # implicitCatchSpatial = getImplicitCatchSpatial(PopValues,explicitCatchSpatial,nodes2merge)# WARNING: ONLY 2010 IMPLICIT CATCH IS PROPERLY DERIVED AT THAT SCALE DUE TO DISPLACE HARDCODING ON VMSLIKE TABLE; 4.42904 mins for 3 years
 # 
 # #save(explicitCatch,explicitCatchSpatial,implicitCatch,implicitCatchSpatial,file=paste(general$main.path,general$case_study,sce,"output/forCatchsPlots.Rdata",sep="/")) # 177MB
 # 
-# #save(explicitCatch,explicitCatchSpatial,implicitCatch,file=paste(general$main.path,general$case_study,sce,"output/forCatchsPlots.Rdata",sep="/")) # 5.5MB 
+# #save(explicitCatch,explicitCatchSpatial,implicitCatch,file=paste(general$main.path,general$case_study,sce,"output/forCatchsPlots.Rdata",sep="/")) # 5.5MB
 # 
 # #22 secs to load 3 years (177MB)
 # #load(file=paste(general$main.path,general$case_study,sce,"output/forCatchsPlots.Rdata",sep="/"))
 # 
-# explicitCatchSpatialICES = explicitCatchSpatial %>% 
-#   group_by(PopId,month,metierId,icesrectanglecode,year,Fraction) %>% 
-#   summarize(value=sum(value)) %>% 
-#   rename(layer=icesrectanglecode) %>% 
+# explicitCatchSpatialICES = explicitCatchSpatial %>%
+#   group_by(PopId,month,metierId,icesrectanglecode,year,Fraction) %>%
+#   summarize(value=sum(value)) %>%
+#   rename(layer=icesrectanglecode) %>%
 #   merge(icesquarterrectangle,by=c("layer"))
 # 
-# explicitCatchSpatialRTI = explicitCatchSpatial %>% 
-#   group_by(PopId,month,metierId,rtirectangle,year,Fraction) %>% 
-#   summarize(value=sum(value)) %>% 
-#   rename(layer=rtirectangle) %>% 
+# explicitCatchSpatialRTI = explicitCatchSpatial %>%
+#   group_by(PopId,month,metierId,rtirectangle,year,Fraction) %>%
+#   summarize(value=sum(value)) %>%
+#   rename(layer=rtirectangle) %>%
 #   merge(RTIrectangle,by=c("layer"))
 # 
-# implicitCatchSpatialICES = implicitCatchSpatial %>% 
-#   group_by(PopId,month,icesrectanglecode,year,Fraction) %>% 
-#   summarize(value=sum(value)) %>% 
-#   rename(layer=icesrectanglecode) %>% 
+# implicitCatchSpatialICES = implicitCatchSpatial %>%
+#   group_by(PopId,month,icesrectanglecode,year,Fraction) %>%
+#   summarize(value=sum(value)) %>%
+#   rename(layer=icesrectanglecode) %>%
 #   merge(icesquarterrectangle,by=c("layer"))
 # 
-# implicitCatchSpatialRTI = implicitCatchSpatial %>% 
-#   group_by(PopId,month,rtirectangle,year,Fraction) %>% 
-#   summarize(value=sum(value)) %>% 
-#   rename(layer=rtirectangle) %>% 
+# implicitCatchSpatialRTI = implicitCatchSpatial %>%
+#   group_by(PopId,month,rtirectangle,year,Fraction) %>%
+#   summarize(value=sum(value)) %>%
+#   rename(layer=rtirectangle) %>%
 #   merge(RTIrectangle,by=c("layer"))
 # 
-# data2process = explicitCatchSpatial %>% 
-#   mutate(year=year-min(year)) %>% 
-#   select(-c(metierId)) %>% 
+# data2process = explicitCatchSpatial %>%
+#   mutate(year=year-min(year)) %>%
+#   select(-c(metierId)) %>%
 #   bind_rows(implicitCatchSpatial)
 # 
 # data2process2= list()
 # for(monthNum in sort(unique(data2process$month))){
 #   data2process2[[monthNum]] = data2process %>%
-#     filter(month==monthNum) %>% 
-#     group_by(PopId,month,NodeId,icesrectanglecode,rtirectangle,Long,Lat,year,Fraction) %>% 
-#     summarize(value=sum(value,na.rm=T)) %>% 
+#     filter(month==monthNum) %>%
+#     group_by(PopId,month,NodeId,icesrectanglecode,rtirectangle,Long,Lat,year,Fraction) %>%
+#     summarize(value=sum(value,na.rm=T)) %>%
 #     ungroup()
 # }
 # allCatchSpatial=plyr::ldply(data2process2)
 # 
-# data2process = explicitCatchSpatialICES %>% 
-#   mutate(year=year-min(year)) %>% 
-#   select(-c(metierId)) %>% 
+# data2process = explicitCatchSpatialICES %>%
+#   mutate(year=year-min(year)) %>%
+#   select(-c(metierId)) %>%
 #   bind_rows(implicitCatchSpatialICES)
 # 
 # data2process2= list()
 # for(monthNum in sort(unique(data2process$month))){
 #   data2process2[[monthNum]] = data2process %>%
-#     filter(month==monthNum) %>% 
-#     group_by(layer,PopId,month,year,Fraction,x,y) %>% 
-#     summarize(value=sum(value,na.rm=T)) %>% 
+#     filter(month==monthNum) %>%
+#     group_by(layer,PopId,month,year,Fraction,x,y) %>%
+#     summarize(value=sum(value,na.rm=T)) %>%
 #     ungroup()
 # }
 # allCatchSpatialICES=plyr::ldply(data2process2)
 # 
-# data2process = explicitCatchSpatialRTI %>% 
-#   mutate(year=year-min(year)) %>% 
-#   select(-c(metierId)) %>% 
+# data2process = explicitCatchSpatialRTI %>%
+#   mutate(year=year-min(year)) %>%
+#   select(-c(metierId)) %>%
 #   bind_rows(implicitCatchSpatialRTI)
 # 
 # data2process2= list()
 # for(monthNum in sort(unique(data2process$month))){
 #   data2process2[[monthNum]] = data2process %>%
-#     filter(month==monthNum) %>% 
-#     group_by(layer,PopId,month,year,Fraction,x,y) %>% 
-#     summarize(value=sum(value,na.rm=T)) %>% 
+#     filter(month==monthNum) %>%
+#     group_by(layer,PopId,month,year,Fraction,x,y) %>%
+#     summarize(value=sum(value,na.rm=T)) %>%
 #     ungroup()
 # }
 # allCatchSpatialRTI=plyr::ldply(data2process2)
-# 
-# # save(explicitCatch,explicitCatchSpatial,explicitCatchSpatialICES,explicitCatchSpatialRTI,file=paste(general$main.path,general$case_study,sce,"output/forExplicitCatchsPlots.Rdata",sep="/"))
-# # save(implicitCatch,implicitCatchSpatial,implicitCatchSpatialICES,implicitCatchSpatialRTI,file=paste(general$main.path,general$case_study,sce,"output/forImplicitCatchsPlots.Rdata",sep="/"))
-# # save(allCatchSpatialRTI,allCatchSpatialICES,allCatchSpatial,file=paste(general$main.path,general$case_study,sce,"output/forAllCatchsPlots.Rdata",sep="/"))
+
+# save(explicitCatch,explicitCatchSpatial,explicitCatchSpatialICES,explicitCatchSpatialRTI,file=paste(general$main.path,general$case_study,sce,"output/forExplicitCatchsPlots.Rdata",sep="/"))
+# save(implicitCatch,implicitCatchSpatial,implicitCatchSpatialICES,implicitCatchSpatialRTI,file=paste(general$main.path,general$case_study,sce,"output/forImplicitCatchsPlots.Rdata",sep="/"))
+# save(allCatchSpatialRTI,allCatchSpatialICES,allCatchSpatial,file=paste(general$main.path,general$case_study,sce,"output/forAllCatchsPlots.Rdata",sep="/"))
 # 
 # load(file=paste(general$main.path,general$case_study,sce,"output/forExplicitCatchsPlots.Rdata",sep="/"))
 # load(file=paste(general$main.path,general$case_study,sce,"output/forImplicitCatchsPlots.Rdata",sep="/"))
@@ -371,8 +407,7 @@ getImplicitCatchSpatial = function(PopValues,explicitCatchSpatial,nodes2merge){
 getExplicitCatchTimeSeries = function(explicitCatch,aggScale="year",metierSel="All",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce){
   data2plot = explicitCatch %>% 
     mutate(metierId=factor(metierId,metierNames$metierId,labels=metierNames$name)) %>% 
-    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
-    mutate(Fraction=fct_recode(Fraction,"Landings"="Catches"))
+    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp))
   
   if(aggScale=="month") data2plot$time=data2plot$month
   if(aggScale=="year") data2plot$time=data2plot$year
@@ -400,8 +435,7 @@ getExplicitCatchTimeSeries = function(explicitCatch,aggScale="year",metierSel="A
 
 getImplicitCatchTimeSeries = function(implicitCatch,aggScale="year",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce){
   data2plot = implicitCatch %>% 
-    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
-    mutate(Fraction=fct_recode(Fraction,"Landings"="Catches"))
+    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp))
   
   if(aggScale=="month") data2plot$time=data2plot$month
   if(aggScale=="year") data2plot$time=data2plot$year
@@ -426,15 +460,15 @@ getAllCatchTimeSeries = function(explicitCatch,implicitCatch,aggScale="year",pop
   interim = explicitCatch %>% 
     group_by(PopId,month,year,Fraction) %>% 
     summarize(value=sum(value)) %>% 
-    ungroup()
+    ungroup() %>% 
+    mutate(year=year-min(year))
   
   data2plot = implicitCatch %>% 
     bind_rows(interim) %>% 
     group_by(PopId,month,year,Fraction) %>% 
     summarize(value=sum(value)) %>% 
     ungroup() %>% 
-    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
-    mutate(Fraction=fct_recode(Fraction,"Landings"="Catches"))
+    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp))
   
   if(aggScale=="month") data2plot$time=data2plot$month
   if(aggScale=="year") data2plot$time=data2plot$year
@@ -461,8 +495,7 @@ getAllCatchTimeSeries = function(explicitCatch,implicitCatch,aggScale="year",pop
 getExplicitCatchBarPlot = function(explicitCatch,aggScale="year",metierSel="All",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce){
   data2plot = explicitCatch %>% 
     mutate(metierId=factor(metierId,metierNames$metierId,labels=metierNames$name)) %>% 
-    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
-    mutate(Fraction=fct_recode(Fraction,"Landings"="Catches"))
+    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp))
   
   if(aggScale=="month") data2plot$time=data2plot$month
   if(aggScale=="year") data2plot$time=data2plot$year
@@ -489,8 +522,7 @@ getExplicitCatchBarPlot = function(explicitCatch,aggScale="year",metierSel="All"
 
 getImplicitCatchBarPlot = function(implicitCatch,aggScale="year",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce){
   data2plot = implicitCatch %>% 
-    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
-    mutate(Fraction=fct_recode(Fraction,"Landings"="Catches"))
+    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp))
   
   if(aggScale=="month") data2plot$time=data2plot$month
   if(aggScale=="year") data2plot$time=data2plot$year
@@ -514,15 +546,15 @@ getAllCatchBarPlot = function(explicitCatch,implicitCatch,aggScale="year",popSel
   interim = explicitCatch %>% 
     group_by(PopId,month,year,Fraction) %>% 
     summarize(value=sum(value)) %>% 
-    ungroup()
+    ungroup() %>% 
+    mutate(year=year-min(year))
   
   data2plot = implicitCatch %>% 
     bind_rows(interim) %>% 
     group_by(PopId,month,year,Fraction) %>% 
     summarize(value=sum(value)) %>% 
     ungroup() %>%   
-    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
-    mutate(Fraction=fct_recode(Fraction,"Landings"="Catches"))
+    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp))
   
   if(aggScale=="month") data2plot$time=data2plot$month
   if(aggScale=="year") data2plot$time=data2plot$year
@@ -566,7 +598,6 @@ getExplicitCatchMap = function(data2process,popNum=0,timeStep=1,metierNum=0,frac
   }
   
   data2plot = data2plot %>% 
-    mutate(Fraction=fct_recode(Fraction,"Landings"="Catches")) %>% 
     filter(PopId==popNum) %>% 
     mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
     mutate(PopId=droplevels(PopId))
@@ -592,7 +623,7 @@ getExplicitCatchMap = function(data2process,popNum=0,timeStep=1,metierNum=0,frac
   }
   
   if(!gif){
-    maxScale = max(data2plot$value[data2plot$Fraction==fractionName & data2plot$time == timeStep]) # Metier selection done previously
+    maxScale = max(data2plot$value[data2plot$Fraction==fractionName]) # Metier selection done previously
     
     if(resScale=="All"){
       data2plot = data2plot%>% 
@@ -719,7 +750,6 @@ getImplicitCatchMap = function(data2process,popNum=0,timeStep=1,fractionName="La
   }
   
   data2plot = data2plot %>% 
-    mutate(Fraction=fct_recode(Fraction,"Landings"="Catches")) %>% 
     filter(PopId==popNum) %>% 
     mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
     mutate(PopId=droplevels(PopId))
@@ -735,7 +765,7 @@ getImplicitCatchMap = function(data2process,popNum=0,timeStep=1,fractionName="La
     mutate(value=replace(value,value<0,0))
   
   if(!gif){
-    maxScale = max(data2plot$value[data2plot$Fraction==fractionName & data2plot$time == timeStep]) # Metier selection done previously
+    maxScale = max(data2plot$value[data2plot$Fraction==fractionName]) # Metier selection done previously
     
     if(resScale=="All"){
       data2plot = data2plot%>% 
@@ -881,7 +911,6 @@ getAllCatchMap = function(data2process,popNum=0,timeStep=1,fractionName="Landing
   }
   
   data2plot = data2plot %>% 
-    mutate(Fraction=fct_recode(Fraction,"Landings"="Catches")) %>% 
     filter(PopId==popNum) %>% 
     mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
     mutate(PopId=droplevels(PopId))
@@ -897,7 +926,7 @@ getAllCatchMap = function(data2process,popNum=0,timeStep=1,fractionName="Landing
     mutate(value=replace(value,value<0,0))
   
   if(!gif){
-    maxScale = max(data2plot$value[data2plot$Fraction==fractionName & data2plot$time == timeStep]) # Metier selection done previously
+    maxScale = max(data2plot$value[data2plot$Fraction==fractionName]) # Metier selection done previously
     
     if(resScale=="All"){
       data2plot = data2plot%>% 

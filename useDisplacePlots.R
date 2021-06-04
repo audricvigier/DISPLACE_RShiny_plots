@@ -25,7 +25,7 @@ library(viridis) # colour-blind friendly palettes
 displaceplotLib="D:/work/Displace/displaceplot/R"
 for (fileName in list.files(displaceplotLib)) source(paste(displaceplotLib,fileName,sep="/"))
 shinyLib="D:/work/Displace/DISPLACE_RShiny_plots/R-scripts"
-for (fileName in list.files(shinyLib,pattern=".R")[-c(7,9,10)]) source(paste(shinyLib,fileName,sep="/")) # Issue with "makeStudyAreaMap.R" 
+for (fileName in list.files(shinyLib,pattern=".R")[-c(8,10,11)]) source(paste(shinyLib,fileName,sep="/")) # Issue with "makeStudyAreaMap.R" 
 for (fileName in list.files(paste(shinyLib,"/fromFrancois"),pattern=".R")) source(paste(paste(shinyLib,"/fromFrancois"),fileName,sep="/"))
 
 ##################
@@ -47,6 +47,7 @@ general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displa
                                       theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
                                       nbSimus=20,
                                       useSQLite=FALSE)
+explicit_pops = 0:(general$nbpops-1)
 
 ##################
 ###
@@ -67,7 +68,7 @@ getAggLoglikeFiles(general,explicit_pops=0:26,implicit_pops=NULL,what="CPUE")
 
 #N IN THOUSANDS per group, time step and pop. No spatial dimension. Also does some plots. WHATEVER THESE PLOTS are supposed to be, redo them with tidyverse. (an SSB plot I've done better (check though); N per size class pop and month (redo with tidyverse)). ALso throws an error because legends are poorly managed.
 getAggPoplikeFiles(general=general,explicit_pops=0:26,the_baseline ="calib_multipliers_")
-  
+
 #Produce average spatial layers over simulations, at a specific time step. Generates a text file with the average layer. How may should I generate (time step, type ?)
 #a_type : anything in that list cumcatches cumcatches_with_threshold cumdiscards cumdiscardsratio cumftime cumsweptarea cumulcatches end inc impact impact_per_szgroup nbchoked start.
 getAggNodeLayerFiles(general, a_type="cumcatches", a_tstep="34321")
@@ -85,25 +86,23 @@ getSimusOutcomes(general,a_baseline="calib_multipliers_",explicit_pops=0:26,sele
 #Does a bar plot on the previously derived indicators
 #This call is equivalent to boxplotAggLoglikeFilesIndicators.R, making it deprectaed
 doOutcomesbarPlot(selected="all",selected_variables = c("feffort", "seffort", "nbtrip", "av_trip_duration", "fishing_based_cpue_explicit", "totland_explicit", "sweptarea", "npv", "av_vpuf_month", "hoover"),selected_scenarios= c("baseline","calib_multipliers_SCE_"))
-    
-    
+
+
 ##################
 ###
 ###EFFORT PLOTS
 ###
 ##################
-  
 
 # Catch in Pop Values. Any difference with log like (= non explicit?) If so, I could track what I want.
 for(sce in general$namefolderoutput){
-  #sce= general$namefolderoutput[2]
-  myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2]),"_out.db",sep=""))
+  myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
   dbListTables(myConn)
   
-  NodesStat = dbGetQuery(myConn,"SELECT * FROM NodesStat")  # Cumulated fishing time per node and time step (NOT metier though)
-  VesselLogLike = dbGetQuery(myConn,"SELECT * FROM VesselLogLike")  # time at sea for each vessel/metier/trip/harbour (NodeId is the harbour, not the fishing location) . But no fishing time?
+  #VesselLogLike = dbGetQuery(myConn,"SELECT * FROM VesselLogLike")  # time at sea for each vessel/metier/trip/harbour (NodeId is the harbour, not the fishing location) . But no fishing time?
   VesselVmsLike = dbGetQuery(myConn,"SELECT * FROM VesselVmsLike")  # State (including fishing (1), steaming (2) and harbour (3)) for each vessel/node/time step . In theory enough to get the information on effort I want, BUT it's only for 1 year (the first one)....
   NodesDef = dbGetQuery(myConn,"SELECT * FROM NodesDef") # Get nodes coordinates, ICES rectangle and RTI rectangle (all coded in icesrectanglecode)
+  NodesStat = dbGetQuery(myConn,"SELECT * FROM NodesStat")  # Cumulated fishing time per node and time step (NOT metier though)
   
   dbDisconnect(myConn) # Close connection
   
@@ -127,30 +126,51 @@ for(sce in general$namefolderoutput){
   icesquarterrectangle=setValues(icesquarterrectangle, icesNames)
   icesquarterrectangle=as.data.frame(icesquarterrectangle,xy=T)
   
-  metierCorr= unique(subset(VesselLogLike, select=c(Id,metierId)))
+  #metierCorr= unique(subset(VesselLogLike, select=c(Id,metierId)))
   months = data.frame(TStep = sort(unique(NodesStat$TStep)), month= 1:length(sort(unique(NodesStat$TStep))))
   
-  VesselVmsLikeCond = VesselVmsLike %>% 
+  fishingLocations = VesselVmsLike %>% 
     filter(State==1) %>% 
+    select(-c(Course,CumFuel,State,TStep)) %>% 
+    group_by(Id,TStepDep,Long,Lat) %>% 
+    summarize(effort=n()) %>% 
+    group_by(Id,TStepDep) %>% 
+    mutate(prop=effort/sum(effort))
+  
+  # Assume that for each trip, catch spatial distribution is proportional to effort spatial distribution
+  
+  catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  names(catchAndEffortPertrip)= c('TStepDep', 'TStep', 'reason_back','cumsteaming', 'idx_node',  'Id', 'VE_REF', 'timeatsea', 'fuelcons', 'traveled_dist',  paste('pop.', 0:(general$nbpops-1), sep=''), "freq_metiers", "revenue", "rev_from_av_prices", "rev_explicit_from_av_prices", "fuelcost", "vpuf", "gav", "gradva","sweptr", "revpersweptarea",  paste('disc_',  explicit_pops, sep=''), "GVA", "GVAPerRevenue", "LabourSurplus", "GrossProfit", "NetProfit",  "NetProfitMargin", "GVAPerFTE", "RoFTA", "BER", "CRBER", "NetPresentValue", "numTrips")   
+  
+  effortPertrip = catchAndEffortPertrip %>% 
+    mutate(effort=TStep-TStepDep-cumsteaming) %>% 
+    select(c(effort,TStep,TStepDep,Id,freq_metiers)) %>% 
+    mutate(metierId = sapply(as.character(freq_metiers), function(x) strsplit(x,split=")")[[1]][1])) %>% 
+    mutate(metierId = as.numeric(sapply(metierId, function(x) strsplit(x,split="\\(")[[1]][2]))) %>% 
+    select(-freq_metiers) %>% 
+    unique() %>% 
+    merge(fishingLocations,by=c("Id","TStepDep"),all.y=T) %>% 
+    #mutate(sanityCheck=abs(effort.y/prop-effort.x)) # All good, except what is cut at the end of first year. Keep effort.x and prop
+    mutate(effort=effort.x*prop) %>% 
+    select(-c(effort.x,effort.y)) %>% 
     merge(subset(NodesDef, select=c(NodeId,Long,Lat,icesrectanglecode), HarbourId==0), by=c("Long","Lat")) %>% 
-    group_by(Long,Lat,Id,TStepDep,NodeId,icesrectanglecode) %>% 
-    summarize(effort=sum(State,na.rm=T)) %>%  # Works since State = 1 when fishing
+    group_by(Long,Lat,Id,TStep,metierId,NodeId,icesrectanglecode) %>% 
+    summarize(effort=sum(effort,na.rm=T)) %>%  # Works since State = 1 when fishing
     ungroup() %>% 
-    merge(metierCorr, by=c("Id")) %>% 
-    mutate(month = sapply(TStepDep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>x]))] )) %>% 
-    group_by(Long,Lat,NodeId,icesrectanglecode,metierId,month) %>%
+    mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>x]))] )) %>% 
+    group_by(Long,Lat,month,metierId,NodeId,icesrectanglecode) %>% 
     summarize(effort=sum(effort,na.rm=T)) %>% 
     ungroup()
-    
-  polygonsRTI=preconditionRTI(VesselVmsLikeCond,RTIrectangle)
-  polygonsICES=preconditionICES(VesselVmsLikeCond,icesquarterrectangle)
   
-  save(polygonsRTI,polygonsICES,RTIrectangle,icesquarterrectangle,VesselVmsLikeCond,file=paste(general$main.path,general$case_study,sce,"output/forEffortPlots.Rdata",sep="/"))
+  polygonsRTI=preconditionRTI(effortPertrip,RTIrectangle)
+  polygonsICES=preconditionICES(effortPertrip,icesquarterrectangle)
+  
+  save(polygonsRTI,polygonsICES,RTIrectangle,icesquarterrectangle,effortPertrip,file=paste(general$main.path,general$case_study,sce,"output/forEffortPlots.Rdata",sep="/"))
   
   for(numMet in c(NA,unique(polygonsRTI$metierId))){
     getmapEffortRTIAll(polygonsRTI,monthNum=NA,idMetier=numMet,gif=T,sce)
     getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=T,sce)
-    getmapEffortNodeAll(VesselVmsLikeCond,monthNum=NA,idMetier=numMet,gif=T,sce)
+    getmapEffortNodeAll(effortPertrip,monthNum=NA,idMetier=numMet,gif=T,sce)
   }
   for(numMet in c(NA,unique(polygonsRTI$metierId))){
     if(!is.na(numMet)){
@@ -161,7 +181,7 @@ for(sce in general$namefolderoutput){
       print(getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=F,sce))
       dev.off()
       png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_AllTime_",numMet,".png",sep=""),height=800,width=800,units="px",res=100)
-      print(getmapEffortNodeAll(VesselVmsLikeCond,monthNum=NA,idMetier=numMet,gif=F,sce))
+      print(getmapEffortNodeAll(effortPertrip,monthNum=NA,idMetier=numMet,gif=F,sce))
       dev.off()
     }
     if(is.na(numMet)){
@@ -172,12 +192,11 @@ for(sce in general$namefolderoutput){
       print(getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=F,sce))
       dev.off()
       png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_AllAll.png",sep=""),height=800,width=800,units="px",res=100)
-      print(getmapEffortNodeAll(VesselVmsLikeCond,monthNum=NA,idMetier=numMet,gif=F,sce))
+      print(getmapEffortNodeAll(effortPertrip,monthNum=NA,idMetier=numMet,gif=F,sce))
       dev.off()
     }
   }
 }
-
 
 ##################
 ###
@@ -299,17 +318,17 @@ metierNames = getMetierNames() %>%
 
 for(sce in general$namefolderoutput){
   
-  myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2]),"_out.db",sep=""))
+  myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
   dbListTables(myConn)
   
   PopValues = dbGetQuery(myConn,"SELECT * FROM PopValues") # To get Cumulated catch per population
   VesselLogLike = dbGetQuery(myConn,"SELECT * FROM VesselLogLike") # time at sea for each vessel/metier/trip/harbour (NodeId is the harbour, not the fishing location) . But no fishing time?
-  VesselLogLikeCatches = dbGetQuery(myConn,"SELECT * FROM VesselLogLikeCatches") 
+  VesselLogLikeCatches = dbGetQuery(myConn,"SELECT * FROM VesselLogLikeCatches")
   VesselVmsLike = dbGetQuery(myConn,"SELECT * FROM VesselVmsLike") # State (including fishing (1), steaming (2) and harbour (3)) for each vessel/node/time step . In theory enough to get the information on effort I want, BUT it's only for 1 year (the first one).... Is it 2 hours slice I have, and not the actual effort? Ask.
   NodesDef = dbGetQuery(myConn,"SELECT * FROM NodesDef") # Get nodes coordinates, ICES rectangle and RTI rectangle (all coded in icesrectanglecode)
   NodesStat = dbGetQuery(myConn,"SELECT * FROM NodesStat")
   
-  dbDisconnect(myConn) # Close connection
+  dbDisconnect(myConn)
   
   
   months = data.frame(TStep = sort(unique(NodesStat$TStep)), month= 1:length(sort(unique(NodesStat$TStep))))
@@ -321,14 +340,41 @@ for(sce in general$namefolderoutput){
   
   metierCorr= unique(subset(VesselLogLike, select=c(Id,metierId)))
   
-  VesselVmsLikeCond = VesselVmsLike %>%  # Pb: VesselLogLike's NodeId is the harbour, not the actual fishing location. get the fishing location here
+  fishingLocations = VesselVmsLike %>% 
     filter(State==1) %>% 
+    select(-c(Course,CumFuel,State,TStep)) %>% 
+    group_by(Id,TStepDep,Long,Lat) %>% 
+    summarize(effort=n()) %>% 
     group_by(Id,TStepDep) %>% 
-    filter(TStep==max(TStep)) %>% 
+    mutate(prop=effort/sum(effort))
+  
+  catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  names(catchAndEffortPertrip)= c('TStepDep', 'TStep', 'reason_back','cumsteaming', 'idx_node',  'Id', 'VE_REF', 'timeatsea', 'fuelcons', 'traveled_dist',  paste('pop.', 0:(general$nbpops-1), sep=''), "freq_metiers", "revenue", "rev_from_av_prices", "rev_explicit_from_av_prices", "fuelcost", "vpuf", "gav", "gradva","sweptr", "revpersweptarea",  paste('disc_',  explicit_pops, sep=''), "GVA", "GVAPerRevenue", "LabourSurplus", "GrossProfit", "NetProfit",  "NetProfitMargin", "GVAPerFTE", "RoFTA", "BER", "CRBER", "NetPresentValue", "numTrips")   
+  
+  catchPertrip = catchAndEffortPertrip %>% 
+    mutate(effort=TStep-TStepDep-cumsteaming) %>% # Use it for CPUE plots
+    select(c(effort,TStep,TStepDep,Id,freq_metiers,starts_with("pop."),starts_with("disc_"))) %>% 
+    mutate(metierId = sapply(as.character(freq_metiers), function(x) strsplit(x,split=")")[[1]][1])) %>% 
+    mutate(metierId = as.numeric(sapply(metierId, function(x) strsplit(x,split="\\(")[[1]][2]))) %>% 
+    select(-freq_metiers) %>% 
+    merge(fishingLocations,by=c("Id","TStepDep"),all.y=T) %>% 
+    #mutate(sanityCheck=abs(effort.y/prop-effort.x)) # All good, except what is cut at the end of first year. Keep effort.x and prop
+    mutate(effort=effort.x*prop) %>% 
+    select(-c(effort.x,effort.y)) %>% 
+    merge(subset(NodesDef, select=c(NodeId,Long,Lat,icesrectanglecode), HarbourId==0), by=c("Long","Lat")) %>% 
+    melt(id.vars=c("Long","Lat","Id","TStepDep","TStep","metierId","prop","effort","NodeId","icesrectanglecode")) %>% 
+    mutate(variable=as.character(variable)) %>% 
+    mutate(Fraction=fct_recode(factor(sapply(variable, function(x) substr(x,1,3))),"Discards"="dis","Landings"="pop")) %>% 
+    mutate(PopId=as.numeric(unlist(regmatches(x=variable, m=gregexpr("[[:digit:]]+",variable))))) %>% 
+    mutate(value=prop*value) %>% 
+    group_by(Long,Lat,Id,TStep,metierId,NodeId,icesrectanglecode,Fraction,PopId) %>% 
+    summarize(effort=sum(effort,na.rm=T),value=sum(value,na.rm=T)) %>% 
     ungroup() %>% 
-    select(-c(CumFuel,Course,State)) %>%
-    unique() %>%
-    merge(nodes2merge,by=c("Long","Lat"))
+    mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>x]))] )) %>% 
+    group_by(Long,Lat,month,metierId,NodeId,icesrectanglecode,Fraction,PopId) %>%
+    summarize(effort=sum(effort,na.rm=T),value=sum(value,na.rm=T)) %>% 
+    ungroup()
+  
   
   #Shapefiles for ICES rectangles and RTI rectangles
   ## Create shapefile VERIFIED, ALL NAMES MATCH THE GOOD RECTANGLES
@@ -351,76 +397,76 @@ for(sce in general$namefolderoutput){
   icesquarterrectangle=as.data.frame(icesquarterrectangle,xy=T)
   
   
-  explicitCatch = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,nodes2merge) # Includes discards, 13 sec for 3 years 
-  explicitCatchSpatial = getExplicitCatchSpatial(VesselLogLike,VesselLogLikeCatches,months) # 18 secs for 3 years. Maybe cut year by year for longer sims? LIMITED TO ONE YEAR SO FAR BECAUSE OF DISPLACE HARD CODING 
-  implicitCatch = getImplicitCatch(PopValues,explicitCatchSpatial) # Includes discards 2' for 3 years 
+  explicitCatch = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,nodes2merge) # Includes discards, 13 sec for 3 years
+  explicitCatchSpatial = getExplicitCatchSpatial(catchPertrip) # LIMITED TO ONE YEAR SO FAR BECAUSE OF DISPLACE HARD CODING
+  implicitCatch = getImplicitCatch(PopValues,explicitCatchSpatial) # Includes discards 2' for 3 years
   implicitCatchSpatial = getImplicitCatchSpatial(PopValues,explicitCatchSpatial,nodes2merge)# WARNING: ONLY 2010 IMPLICIT CATCH IS PROPERLY DERIVED AT THAT SCALE DUE TO DISPLACE HARDCODING ON VMSLIKE TABLE; 4.42904 mins for 3 years
   
-  explicitCatchSpatialICES = explicitCatchSpatial %>% 
-    group_by(PopId,month,metierId,icesrectanglecode,year,Fraction) %>% 
-    summarize(value=sum(value)) %>% 
-    rename(layer=icesrectanglecode) %>% 
+  explicitCatchSpatialICES = explicitCatchSpatial %>%
+    group_by(PopId,month,metierId,icesrectanglecode,year,Fraction) %>%
+    summarize(value=sum(value)) %>%
+    rename(layer=icesrectanglecode) %>%
     merge(icesquarterrectangle,by=c("layer"))
   
-  explicitCatchSpatialRTI = explicitCatchSpatial %>% 
-    group_by(PopId,month,metierId,rtirectangle,year,Fraction) %>% 
-    summarize(value=sum(value)) %>% 
-    rename(layer=rtirectangle) %>% 
+  explicitCatchSpatialRTI = explicitCatchSpatial %>%
+    group_by(PopId,month,metierId,rtirectangle,year,Fraction) %>%
+    summarize(value=sum(value)) %>%
+    rename(layer=rtirectangle) %>%
     merge(RTIrectangle,by=c("layer"))
   
-  implicitCatchSpatialICES = implicitCatchSpatial %>% 
-    group_by(PopId,month,icesrectanglecode,year,Fraction) %>% 
-    summarize(value=sum(value)) %>% 
-    rename(layer=icesrectanglecode) %>% 
+  implicitCatchSpatialICES = implicitCatchSpatial %>%
+    group_by(PopId,month,icesrectanglecode,year,Fraction) %>%
+    summarize(value=sum(value)) %>%
+    rename(layer=icesrectanglecode) %>%
     merge(icesquarterrectangle,by=c("layer"))
   
-  implicitCatchSpatialRTI = implicitCatchSpatial %>% 
-    group_by(PopId,month,rtirectangle,year,Fraction) %>% 
-    summarize(value=sum(value)) %>% 
-    rename(layer=rtirectangle) %>% 
+  implicitCatchSpatialRTI = implicitCatchSpatial %>%
+    group_by(PopId,month,rtirectangle,year,Fraction) %>%
+    summarize(value=sum(value)) %>%
+    rename(layer=rtirectangle) %>%
     merge(RTIrectangle,by=c("layer"))
   
-  data2process = explicitCatchSpatial %>% 
-    mutate(year=year-min(year)) %>% 
-    select(-c(metierId)) %>% 
+  data2process = explicitCatchSpatial %>%
+    mutate(year=year-min(year)) %>%
+    select(-c(metierId)) %>%
     bind_rows(implicitCatchSpatial)
   
   data2process2= list()
   for(monthNum in sort(unique(data2process$month))){
     data2process2[[monthNum]] = data2process %>%
-      filter(month==monthNum) %>% 
-      group_by(PopId,month,NodeId,icesrectanglecode,rtirectangle,Long,Lat,year,Fraction) %>% 
-      summarize(value=sum(value,na.rm=T)) %>% 
+      filter(month==monthNum) %>%
+      group_by(PopId,month,NodeId,icesrectanglecode,rtirectangle,Long,Lat,year,Fraction) %>%
+      summarize(value=sum(value,na.rm=T)) %>%
       ungroup()
   }
   allCatchSpatial=plyr::ldply(data2process2)
   
-  data2process = explicitCatchSpatialICES %>% 
-    mutate(year=year-min(year)) %>% 
-    select(-c(metierId)) %>% 
+  data2process = explicitCatchSpatialICES %>%
+    mutate(year=year-min(year)) %>%
+    select(-c(metierId)) %>%
     bind_rows(implicitCatchSpatialICES)
   
   data2process2= list()
   for(monthNum in sort(unique(data2process$month))){
     data2process2[[monthNum]] = data2process %>%
-      filter(month==monthNum) %>% 
-      group_by(layer,PopId,month,year,Fraction,x,y) %>% 
-      summarize(value=sum(value,na.rm=T)) %>% 
+      filter(month==monthNum) %>%
+      group_by(layer,PopId,month,year,Fraction,x,y) %>%
+      summarize(value=sum(value,na.rm=T)) %>%
       ungroup()
   }
   allCatchSpatialICES=plyr::ldply(data2process2)
   
-  data2process = explicitCatchSpatialRTI %>% 
-    mutate(year=year-min(year)) %>% 
-    select(-c(metierId)) %>% 
+  data2process = explicitCatchSpatialRTI %>%
+    mutate(year=year-min(year)) %>%
+    select(-c(metierId)) %>%
     bind_rows(implicitCatchSpatialRTI)
   
   data2process2= list()
   for(monthNum in sort(unique(data2process$month))){
     data2process2[[monthNum]] = data2process %>%
-      filter(month==monthNum) %>% 
-      group_by(layer,PopId,month,year,Fraction,x,y) %>% 
-      summarize(value=sum(value,na.rm=T)) %>% 
+      filter(month==monthNum) %>%
+      group_by(layer,PopId,month,year,Fraction,x,y) %>%
+      summarize(value=sum(value,na.rm=T)) %>%
       ungroup()
   }
   allCatchSpatialRTI=plyr::ldply(data2process2)
