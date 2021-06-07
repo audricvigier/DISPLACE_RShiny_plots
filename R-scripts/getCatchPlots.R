@@ -167,7 +167,7 @@
 # WARNING : these plots are not meant for quality of fit evaluation, hence implicit catch can be accounted for on 2010:2011
 
 # Get implicit and explicit catch and discards for all time steps (months), metiers, pops NOT SPATIAL
-getExplicitCatch = function(VesselLogLike,VesselLogLikeCatches,months,nodes2merge){
+getExplicitCatch = function(VesselLogLike,VesselLogLikeCatches,months,fortnights,nodes2merge,step="month"){
   
   stepLogLikeId = VesselLogLike %>% 
     select(c(RowId,TStepDep,TStep,metierId)) %>% 
@@ -176,32 +176,53 @@ getExplicitCatch = function(VesselLogLike,VesselLogLikeCatches,months,nodes2merg
   cumcatchLog=VesselLogLikeCatches %>% 
     merge(stepLogLikeId, by=c("LoglikeId"),all=T) %>% 
     select(-c(TStepDep))%>% 
-    mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>=x]))] ))
+    mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>=x]))] )) %>% 
+    mutate(fortnight = sapply(TStep, function(x) fortnights$fortnight[which(fortnights$TStep==min(fortnights$TStep[fortnights$TStep>x]))] ))
   # TStep is the time step at the end of the month, e.g. 745 is the end of Jan 2010
   
-  cumcatchLog = cumcatchLog %>% 
-    group_by(PopId,month,metierId) %>% 
-    summarise_at(c("Catches","Discards"),sum) %>% 
-    rename(Landings=Catches) %>% 
-    ungroup() %>% 
-    mutate(year=2010+floor((month-1)/12)) %>%
-    melt(id.vars=c("PopId","month","metierId","year")) %>% 
-    rename(Fraction=variable) %>% 
-    mutate(value=value/1000) # Convert to tons
+  if(step=="month"){
+    cumcatchLog = cumcatchLog %>% 
+      group_by(PopId,month,metierId) %>% 
+      summarise_at(c("Catches","Discards"),sum) %>% 
+      rename(Landings=Catches) %>% 
+      ungroup() %>% 
+      mutate(year=2010+floor((month-1)/12)) %>%
+      melt(id.vars=c("PopId","month","metierId","year")) %>% 
+      rename(Fraction=variable) %>% 
+      mutate(value=value/1000) # Convert to tons
+  }
+  if(step=="fortnight"){
+    cumcatchLog = cumcatchLog %>% 
+      group_by(PopId,fortnight,metierId) %>% 
+      summarise_at(c("Catches","Discards"),sum) %>% 
+      rename(Landings=Catches) %>% 
+      ungroup() %>% 
+      melt(id.vars=c("PopId","fortnight","metierId")) %>% 
+      rename(Fraction=variable) %>% 
+      mutate(value=value/1000) # Convert to tons
+  }
   
   return(cumcatchLog)
 }
 
 #LIMITED TO 1 YEAR SO FAR BECAUS OF DISPLACE HARD CODING
-getExplicitCatchSpatial = function(catchPertrip){
+getExplicitCatchSpatial = function(catchPertrip,step="month"){
   
-  catch2return = catchPertrip %>% 
-    mutate(value=value/1000) %>% # Convert to tons
-    mutate(year=floor((month-1)/12)) %>%
-    rename(rtirectangle=icesrectanglecode) %>% 
-    mutate(icesrectanglecode=as.numeric(sapply(rtirectangle, function(x) substr(x,1,4))))
-  return(catch2return)
-              
+  if(step=="month"){
+    catch2return = catchPertrip %>% 
+      mutate(value=value/1000) %>% # Convert to tons
+      mutate(year=floor((month-1)/12)) %>%
+      rename(rtirectangle=icesrectanglecode) %>% 
+      mutate(icesrectanglecode=as.numeric(sapply(rtirectangle, function(x) substr(x,1,4))))
+    return(catch2return)
+  }
+  if(step=="fortnight"){
+    catch2return = catchPertrip %>% 
+      mutate(value=value/1000) %>% # Convert to tons
+      rename(rtirectangle=icesrectanglecode) %>% 
+      mutate(icesrectanglecode=as.numeric(sapply(rtirectangle, function(x) substr(x,1,4))))
+    return(catch2return)
+  }    
   # stepLogLikeId = VesselLogLike %>% 
   #   select(c(RowId,TStepDep,TStep,metierId,Id)) %>% 
   #   unique() %>% 
@@ -310,7 +331,6 @@ getImplicitCatchSpatial = function(PopValues,explicitCatchSpatial,nodes2merge){
   
   return(ImplicitCatch2)
 }
-
 
 # explicitCatch = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,nodes2merge) # Includes discards, 13 sec for 3 years
 # explicitCatchSpatial = getExplicitCatchSpatial(catchPertrip) # LIMITED TO ONE YEAR SO FAR BECAUSE OF DISPLACE HARD CODING

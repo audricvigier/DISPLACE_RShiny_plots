@@ -32,6 +32,7 @@ general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displa
 
 source("R-scripts/getBiomassPlots.R", local = TRUE)
 source("R-scripts/getCatchPlots.R", local = TRUE)
+source("R-scripts/getCPUEPlots.R", local = TRUE)
 source("R-scripts/getEffortPlots.R", local = TRUE)
 source("R-scripts/mapAverageLayerFiles.R", local = TRUE)
 source("R-scripts/polygonPlotsFromAggLoglikeFiles.R", local = TRUE)
@@ -70,7 +71,6 @@ getMetierNames = function(){
     rename(metierId=idx)
 }
 
-
 stockNames = getStockNames() %>% 
   arrange(PopId)
 metierNames = getMetierNames() %>% 
@@ -81,12 +81,13 @@ metierNames = getMetierNames() %>%
 #for (f in c(loglikefns, popdynfns, annualindicfns)) load(f, envir = .GlobalEnv)
 for (f in c(loglikefns, popdynfns)) load(f, envir = .GlobalEnv)
 
-biomassMaps = effortMaps = allCatchMaps = implicitCatchMaps = explicitCatchMaps = list()
+biomassMaps = effortMaps = allCatchMaps = implicitCatchMaps = explicitCatchMaps = explicitCPUEMaps = explicitCPUEMapsFortnight =list()
+
 for (sce in popdynscenarios){
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forEffortPlots.Rdata",sep=""))
   effortMaps[[sce]]$polygonsICES=polygonsICES
   effortMaps[[sce]]$polygonsRTI=polygonsRTI
-  effortMaps[[sce]]$VesselVmsLikeCond=VesselVmsLikeCond
+  effortMaps[[sce]]$VesselVmsLikeCond=effortPertrip
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forBiomassPlots.Rdata",sep=""))
   biomassMaps[[sce]]$interimMap=interimMap
   biomassMaps[[sce]]$interimMapRTI=interimMapRTI
@@ -103,6 +104,13 @@ for (sce in popdynscenarios){
   explicitCatchMaps[[sce]]$interimMap=explicitCatchSpatial
   explicitCatchMaps[[sce]]$interimMapRTI=explicitCatchSpatialRTI
   explicitCatchMaps[[sce]]$interimMapICES=explicitCatchSpatialICES
+  load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forExplicitCPUEPlots.Rdata",sep=""))
+  explicitCPUEMaps[[sce]]$interimMap=explicitCatchSpatial
+  explicitCPUEMaps[[sce]]$interimMapRTI=explicitCatchSpatialRTI
+  explicitCPUEMaps[[sce]]$interimMapICES=explicitCatchSpatialICES
+  explicitCPUEMapsFortnight[[sce]]$interimMap=explicitCatchSpatialFortnight
+  explicitCPUEMapsFortnight[[sce]]$interimMapRTI=explicitCatchSpatialRTIFortnight
+  explicitCPUEMapsFortnight[[sce]]$interimMapICES=explicitCatchSpatialICESFortnight
 }
 
 ## and read some tables
@@ -122,6 +130,7 @@ convertMenuItem <- function(tabName, mi) {
 }
 
 ## User interface ----
+
 ui <- dashboardPage(
   dashboardHeader(title = "DISPLACE output viewer"),
   dashboardSidebar(
@@ -132,13 +141,31 @@ ui <- dashboardPage(
                   #convertMenuItem("map", menuItem("Maps", tabName = "map", icon = icon("map"),selectInput("sel.mapquantity", "Select quantity", choices = selquantity(), multiple = FALSE, selectize = FALSE))), # cumulativeCatch, discards, ftime, swept area
                   convertMenuItem("map",
                                   menuItem("Maps", tabName = "map", icon = icon("map"),
-                                           selectInput("selmap.variable", "Variable", choices=c("Effort","Biomass","Landings","Discards")),                                       selectInput("selmap.catchVariable", "catch variable", choices=c("Explicit","Implicit","All")),
-                                           sliderInput("selmap.month", "Time step (month)", min = 1, max = ((yend-ybeg+1)*12),value=1, step=1, ticks = T, animate = T),           
-                                           sliderInput("selmap.year", "Time step (year)", min = ybeg, max = yend,value=ybeg, step=1, ticks = T, animate = T),
-                                           selectInput("selmap.timescale", "Aggregation scale (time)", choices=c("month","year")),
-                                           selectInput("selmap.metier", "Métier", choices=c("All",0:16)),
-                                           selectInput("selmap.pop", "Population", choices=c(0:26)),
-                                           selectInput("selmap.scale", "Aggregation scale (space)", choices=c("Node","ICES rectangle","RTI rectangle")))), # cumulativeCatch, discards, ftime, swept area
+                                           selectInput("selmap.variable", "Variable", choices=c("Effort","Biomass","Landings","Discards","LPUE","DPUE"),selected="Effort"),                         
+                                           selectInput("selmap.scale", "Aggregation scale (space)", choices=c("Node","ICES rectangle","RTI rectangle"),selected="Node"),
+                                           conditionalPanel(
+                                             condition = "input['selmap.variable']=='Landings' || input['selmap.variable']=='Discards'",
+                                             selectInput("selmap.catchVariable", "Catch variable", choices=c("Explicit","Implicit","All"),selected="Explicit")),
+                                          conditionalPanel(
+                                             condition = "input['selmap.variable'] =='LPUE' || input['selmap.variable'] =='DPUE'",
+                                             selectInput("selmap.rtilike", "RTI-like maps?", choices=c("No","Yes"),selected="No")),
+                                          
+                                            selectInput("selmap.timescale", "Aggregation scale (time)", choices=c("month","year"),selected="month"),
+                                           conditionalPanel(
+                                             condition = "input['selmap.timescale'] =='fortnight'",
+                                             sliderInput("selmap.fortnight", "Time step (fortnight)", min = 1, max = ((yend-ybeg+1)*26),value=1, step=1, ticks = T, animate = T)),
+                                           conditionalPanel(
+                                             condition = "input['selmap.timescale'] =='month'",
+                                             sliderInput("selmap.month", "Time step (month)", min = 1, max = ((yend-ybeg+1)*12),value=1, step=1, ticks = T, animate = T)),
+                                           conditionalPanel(
+                                             condition = "input['selmap.timescale'] =='year'",
+                                             sliderInput("selmap.year", "Time step (year)", min = ybeg, max = yend,value=ybeg, step=1, ticks = T, animate = T)),
+                                          conditionalPanel(
+                                            condition = "input['selmap.variable'] !='Biomass'",
+                                            selectInput("selmap.metier", "Métier", choices=c("All",0:16),selected="All")),
+                                          conditionalPanel(
+                                              condition = "input['selmap.variable'] !='Effort'",
+                                              selectInput("selmap.pop", "Population", choices=c(0:26),selected=7)))), # cumulativeCatch, discards, ftime, swept area
                   convertMenuItem("ts",
                                   menuItem("Time series", tabName = "ts", icon = icon("chart-line"),
                                            selectInput("sel.sce", "Select scenarios", choices = selsce(popdynscenarios,scenames), selected = selsce(popdynscenarios,scenames), multiple = TRUE, selectize = FALSE),
@@ -198,12 +225,33 @@ ui <- dashboardPage(
 )
 
 ## Server side logic ----
-server <- function(input, output) {
+server <- function(input, output, session) {
   output$speciesTable <- renderTable(read.csv(paste(outputLocation,"/species.csv",sep="")))
   output$gearTable <- renderTable({
     tbl <- read.csv(paste(outputLocation,"/gears.csv",sep=""))
     names(tbl) <- c("Gear", "Code")
     tbl
+  })
+  
+  outVar <- reactive({
+    updatedItems=list()
+    updatedItems[[1]] = c("month","year")
+    updatedItems[[2]]=c("Node","ICES rectangle","RTI rectangle")
+    #if (!input$selmap.variable%in%c("LPUE","DPUE")) updatedItems[[1]] = c("month","year")
+    if (input$selmap.variable%in%c("LPUE","DPUE") & input$selmap.rtilike=="No") updatedItems[[1]] = c("month","year","fortnight")
+    if (input$selmap.variable%in%c("LPUE","DPUE") & input$selmap.rtilike=="Yes"){
+      updatedItems[[1]] = c("fortnight")
+      updatedItems[[2]]=c("RTI rectangle")
+    }
+    return(updatedItems)
+  })
+  
+  observe({
+    updateSelectInput(session, "selmap.timescale",choices = outVar()[[1]], selected =outVar()[[1]][1])
+  })
+  
+  observe({
+    updateSelectInput(session, "selmap.scale",choices = outVar()[[2]], selected =outVar()[[2]][1]) 
   })
   
   mapsOnAgridEffort = function(effortMaps,scale,metierNum,monthNum,scenames){
@@ -270,7 +318,7 @@ server <- function(input, output) {
     if(scaleSpace=="Node") scaleSpace = "All"
     if(scaleSpace=="RTI rectangle") scaleSpace = "RTI"
     if(scaleSpace=="ICES rectangle") scaleSpace = "ICES"
-    if (scaleTime=="year" & catchType=="Explicit") timeStep = timeStep +ybeg -1
+    if (scaleTime=="year" & catchType=="Explicit") timeStep = timeStep -1
     plotList=list()
     i=0
     for(data2map in dataset){
@@ -287,6 +335,37 @@ server <- function(input, output) {
       if(catchType=="All"){
         plotList[[i]]=as_grob(getAllCatchMap(data2plot,popNum,timeStep,fractionName,sce=scenames[i],scaleTime,resScale=scaleSpace,gif=F))
       }
+    }
+    numCols = 4
+    if(length(plotList)<4) numCols = length(plotList)
+    return(grid.arrange(grobs=plotList,ncol=numCols))
+  }
+  
+  mapsOnAgridCPUE = function(dataset,fractionName,metierNum,scaleSpace,scaleTime,popNum,timeStep,scenames,rtilike){
+    # catchMaps=explicitCatchMaps
+    # scaleSpace="Node" #input$selmap.scale
+    # scaleTime="month"
+    # popNum=7
+    # timeStep=2# input$selmap.month
+    # metierNum=3 #metierNum
+    # scenames=c("A","B")
+    # fractionName="Landings"
+    # plotList=list()
+    # data2plot=NULL
+    
+    if(scaleSpace=="Node") scaleSpace = "All"
+    if(scaleSpace=="RTI rectangle") scaleSpace = "RTI"
+    if(scaleSpace=="ICES rectangle") scaleSpace = "ICES"
+    if (scaleTime=="year") timeStep = timeStep -1
+    plotList=list()
+    i=0
+    for(data2map in dataset){
+      if(scaleSpace=="All") data2plot = data2map$interimMap
+      if(scaleSpace=="ICES") data2plot = data2map$interimMapICES
+      if(scaleSpace=="RTI") data2plot = data2map$interimMapRTI
+      i=i+1
+      if (rtilike=="No") plotList[[i]]=as_grob(getExplicitCPUEMap(data2plot,popNum,timeStep,metierNum,fractionName,sce=scenames[i],scaleTime,resScale=scaleSpace,gif=F))
+      if (rtilike=="Yes") plotList[[i]]=as_grob(getExplicitCPUERTILikeMap(data2plot,popNum,timeStep,metierNum,fractionName,sce=scenames[i],scaleTime,gif=F))
     }
     numCols = 4
     if(length(plotList)<4) numCols = length(plotList)
@@ -316,10 +395,12 @@ server <- function(input, output) {
       numOfPop=input$selmap.pop
       plot2render=mapsOnAgridBiomass(biomassMaps,scale=input$selmap.scale,popNum=numOfPop,monthNum=input$selmap.month,attr(biomassMaps,"names"))
     }
+    
     if(input$selmap.variable%in%c("Discards","Landings")){
       metierNum=input$selmap.metier
       numOfPop=input$selmap.pop
       catchType=input$selmap.catchVariable
+
       if(input$selmap.timescale=="month") timeStep = input$selmap.month
       if(input$selmap.timescale=="year") timeStep = input$selmap.year-ybeg+1
       
@@ -327,7 +408,28 @@ server <- function(input, output) {
       if(catchType == "Implicit") plot2render=mapsOnAgridCatch(dataset=implicitCatchMaps,catchType,fractionName=input$selmap.variable,metierNum,scaleSpace=input$selmap.scale,scaleTime=input$selmap.timescale,popNum=numOfPop,timeStep,attr(biomassMaps,"names"))
       if(catchType == "All") plot2render=mapsOnAgridCatch(dataset=allCatchMaps,catchType,fractionName=input$selmap.variable,metierNum,scaleSpace=input$selmap.scale,scaleTime=input$selmap.timescale,popNum=numOfPop,timeStep,attr(biomassMaps,"names"))
     }
-    plot2render
+    
+    if(input$selmap.variable%in%c("DPUE","LPUE")){
+      metierNum=input$selmap.metier
+      numOfPop=input$selmap.pop
+      fractionLabel="Landings"
+      if(input$selmap.variable=="DPUE") fractionLabel= "Discards"
+      
+      if(input$selmap.timescale=="fortnight") timeStep = input$selmap.fortnight
+      if(input$selmap.timescale=="month") timeStep = input$selmap.month
+      if(input$selmap.timescale=="year") timeStep = input$selmap.year-ybeg+1
+      
+      
+      if(input$selmap.rtilike=="No"){
+        if(input$selmap.timescale!="fortnight") plot2render=mapsOnAgridCPUE(explicitCPUEMaps,fractionName=fractionLabel,metierNum,scaleSpace=input$selmap.scale,scaleTime=input$selmap.timescale,popNum=numOfPop,timeStep,scenames=attr(explicitCPUEMaps,"names"),rtilike=input$selmap.rtilike)
+        if(input$selmap.timescale=="fortnight") plot2render=mapsOnAgridCPUE(explicitCPUEMapsFortnight,fractionName=fractionLabel,metierNum,scaleSpace=input$selmap.scale,scaleTime=input$selmap.timescale,popNum=numOfPop,timeStep,scenames=attr(explicitCPUEMaps,"names"),rtilike=input$selmap.rtilike)
+      }else{
+        plot2render=mapsOnAgridCPUE(explicitCPUEMapsFortnight,fractionName=fractionLabel,metierNum,scaleSpace=input$selmap.scale,scaleTime=input$selmap.timescale,popNum=numOfPop,timeStep,scenames=attr(explicitCPUEMaps,"names"),rtilike=input$selmap.rtilike)
+      }
+    }
+    
+    return(plot2render)
+    
   })
 
   output$linePlot <- renderPlot({
