@@ -25,7 +25,7 @@ library(viridis) # colour-blind friendly palettes
 displaceplotLib="D:/work/Displace/displaceplot/R"
 for (fileName in list.files(displaceplotLib)) source(paste(displaceplotLib,fileName,sep="/"))
 shinyLib="D:/work/Displace/DISPLACE_RShiny_plots/R-scripts"
-for (fileName in list.files(shinyLib,pattern=".R")[-c(8,10,11)]) source(paste(shinyLib,fileName,sep="/")) # Issue with "makeStudyAreaMap.R" 
+for (fileName in list.files(shinyLib,pattern=".R")[-c(9,11,12)]) source(paste(shinyLib,fileName,sep="/")) # Issue with "makeStudyAreaMap.R" 
 for (fileName in list.files(paste(shinyLib,"/fromFrancois"),pattern=".R")) source(paste(paste(shinyLib,"/fromFrancois"),fileName,sep="/"))
 
 ##################
@@ -565,3 +565,34 @@ for(sce in general$namefolderoutput){
   
   save(explicitCatchSpatial,explicitCatchSpatialFortnight,explicitCatchSpatialICES,explicitCatchSpatialICESFortnight,explicitCatchSpatialRTI,explicitCatchSpatialRTIFortnight,file=paste(general$main.path,general$case_study,sce,"output/forExplicitCPUEPlots.Rdata",sep="/"))
 }
+
+##################
+###
+###F PLOTS
+###
+##################
+
+for(sce in general$namefolderoutput){
+  FestimatesYear = read.table(file=paste(general$main.path,"/",general$case_study,"/",sce,"/popdyn_annual_indic_",sce,length(general$namesimu[[1]]),".dat",sep=""),header=F)
+  names(FestimatesYear)=c("TStep","pop","multi","multi2","Fbar","totland_kg","totdisc_kg","SSB_kg","tac","N0","N1","N2","N3","N4","N5","N6","N7","N8","N9","N10","F0","F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","W0","W1","W2","W3","W4","W5","W6","W7","W8","W9","W10","M0","M1","M2","M3","M4","M5","M6","M7","M8","M9","M10")
+  
+  
+  FestimatesYear = FestimatesYear %>% 
+    select(c(TStep,pop,Fbar,paste("F",0:10,sep=""))) %>% 
+    rename(PopId=pop) %>% 
+    melt(id.vars=c("TStep","Fbar","PopId")) %>% 
+    rename(age=variable) %>% 
+    mutate(age=as.character(age)) %>%
+    mutate(age=as.numeric(sapply(age,function(x) strsplit(x, split="F")[[1]][2]))) %>% 
+    # group_by(TStep,PopId) %>% 
+    # mutate(Fbar2=mean(value[age%in%c(Fbarage$amin[Fbarage$PopId==PopId]:Fbarage$amax[Fbarage$PopId==PopId])])) %>% 
+    # ungroup() %>% 
+    # mutate(diff=abs(Fbar-Fbar2)) %>% # Does not match Fbar definition: I cannot derive F bar like that
+    mutate(year = factor(TStep,labels=0:(length(unique(TStep))-1))) %>% 
+    mutate(year = as.numeric(levels(year))[year]) %>% 
+    merge(stockNames,by=c("PopId"))
+  
+  save(FestimatesYear,file=paste(general$main.path,general$case_study,sce,"output/forFPlots.Rdata",sep="/"))
+}
+
+getFTimeSeries(FestimatesYear,F)
