@@ -266,3 +266,50 @@ getmapEffortICESAll=function(polygonsICES,gif=FALSE,idMetier=0,monthNum=1,scenam
 # getmapEffortNodeAll(VesselVmsLikeCond,gif=FALSE,idMetier=10,monthNum=1)
 # getmapEffortRTIAll(polygonsRTI,gif=FALSE,idMetier=NA,monthNum=10)
 # getmapEffortICESAll(polygonsICES,gif=FALSE,idMetier=NA,monthNum=10)
+
+##################
+###
+###CREATE TIME SERIES PLOTS
+###
+##################
+
+getEffortTimeSeries <- function(effortPertrip,aggScale="month",metNum="All",ybeg=2010){
+
+  effortPertrip = effortPertrip %>% 
+    group_by(month,metierId,scename) %>% 
+    summarize(effort=sum(effort,na.rm=T)) %>% 
+    ungroup() %>% 
+    mutate(year=floor((month-1)/12)) %>% 
+    mutate(time=month)
+  
+  if(aggScale=="year") effortPertrip$time = effortPertrip$year + ybeg
+  
+  if("All" %in% metNum){
+    metNum = "All"
+    effortPertrip$metierId="All"
+  }
+  
+  if(!"All" %in% metNum){
+    effortPertrip = effortPertrip %>% 
+      filter(metierId%in%metNum) %>% 
+      mutate(metierId = sapply(metierId, function(x) metierNames$name[metierNames$metierId==x]))
+  }
+  
+  plot2return = effortPertrip %>% 
+    group_by(time,metierId,scename) %>% 
+    summarize(effort=sum(effort,na.rm=T)) %>% 
+    ungroup() %>% 
+    ggplot(aes(x=time,y=effort,colour=scename,linetype=scename,shape=scename))+
+      geom_line(size=1)+
+      geom_point(size=2)+
+      facet_wrap(~metierId,scales="free_y")+
+      labs(x=paste("Time step (",aggScale,")",sep=""),y="Effort\n(hours)", title ="Effort")+
+      scale_colour_manual(name="Scenario", values=rep(scales::hue_pal()(5),3)[1:length(unique(effortPertrip$scename))])+
+      scale_linetype_manual(name="Scenario", values=c(rep(1:2,each=5),3)[1:length(unique(effortPertrip$scename))])+
+      scale_shape_manual(name="Scenario", values=c(rep(c(15:16),each=5),17)[1:length(unique(effortPertrip$scename))])+
+      expand_limits(y=0)+
+      theme_minimal()+
+      theme(axis.title.y = element_text(angle=0,vjust=0.5))
+  
+  return(plot2return)
+}

@@ -34,6 +34,7 @@ source("R-scripts/getBiomassPlots.R", local = TRUE)
 source("R-scripts/getCatchPlots.R", local = TRUE)
 source("R-scripts/getCPUEPlots.R", local = TRUE)
 source("R-scripts/getEffortPlots.R", local = TRUE)
+source("R-scripts/getFPlots.R", local = TRUE)
 source("R-scripts/mapAverageLayerFiles.R", local = TRUE)
 source("R-scripts/polygonPlotsFromAggLoglikeFiles.R", local = TRUE)
 source("R-scripts/polygonPlotsFromPopDynFiles.R", local = TRUE)
@@ -82,12 +83,14 @@ metierNames = getMetierNames() %>%
 for (f in c(loglikefns, popdynfns)) load(f, envir = .GlobalEnv)
 
 biomassMaps = effortMaps = allCatchMaps = implicitCatchMaps = explicitCatchMaps = explicitCPUEMaps = explicitCPUEMapsFortnight =list()
-
+biomassTimeSeries = effortTimeSeries = FTimeSeries = allCatchTimeSeries = implicitCatchTimeSeries = explicitCatchTimeSeries = explicitCPUETimeSeries = explicitCPUETimeSeriesFortnight =list()
 for (sce in popdynscenarios){
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forEffortPlots.Rdata",sep=""))
   effortMaps[[sce]]$polygonsICES=polygonsICES
   effortMaps[[sce]]$polygonsRTI=polygonsRTI
   effortMaps[[sce]]$VesselVmsLikeCond=effortPertrip
+  effortTimeSeries[[sce]]=effortPertrip %>% 
+    mutate(scename=sce)
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forBiomassPlots.Rdata",sep=""))
   biomassMaps[[sce]]$interimMap=interimMap
   biomassMaps[[sce]]$interimMapRTI=interimMapRTI
@@ -96,14 +99,20 @@ for (sce in popdynscenarios){
   allCatchMaps[[sce]]$interimMap=allCatchSpatial
   allCatchMaps[[sce]]$interimMapRTI=allCatchSpatialRTI
   allCatchMaps[[sce]]$interimMapICES=allCatchSpatialICES
+  allCatchTimeSeries[[sce]]=allCatchSpatialICES %>% # Save an actual allCatch!
+    group_by(PopId,month,year,Fraction) %>% 
+    summarize(value=sum(value)) %>% 
+    ungroup()
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forImplicitCatchsPlots.Rdata",sep=""))
   implicitCatchMaps[[sce]]$interimMap=implicitCatchSpatial
   implicitCatchMaps[[sce]]$interimMapRTI=implicitCatchSpatialRTI
   implicitCatchMaps[[sce]]$interimMapICES=implicitCatchSpatialICES
+  implicitCatchTimeSeries[[sce]]=implicitCatch
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forExplicitCatchsPlots.Rdata",sep=""))
   explicitCatchMaps[[sce]]$interimMap=explicitCatchSpatial
   explicitCatchMaps[[sce]]$interimMapRTI=explicitCatchSpatialRTI
   explicitCatchMaps[[sce]]$interimMapICES=explicitCatchSpatialICES
+  explicitCatchTimeSeries[[sce]]=explicitCatch
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forExplicitCPUEPlots.Rdata",sep=""))
   explicitCPUEMaps[[sce]]$interimMap=explicitCatchSpatial
   explicitCPUEMaps[[sce]]$interimMapRTI=explicitCatchSpatialRTI
@@ -111,7 +120,13 @@ for (sce in popdynscenarios){
   explicitCPUEMapsFortnight[[sce]]$interimMap=explicitCatchSpatialFortnight
   explicitCPUEMapsFortnight[[sce]]$interimMapRTI=explicitCatchSpatialRTIFortnight
   explicitCPUEMapsFortnight[[sce]]$interimMapICES=explicitCatchSpatialICESFortnight
+  load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forFPlots.Rdata",sep=""))
+  FTimeSeries[[sce]]=FestimatesYear %>% 
+    mutate(scename=sce)
 }
+
+FTimeSeries = plyr::ldply(FTimeSeries)
+effortTimeSeries = plyr::ldply(effortTimeSeries)
 
 ## and read some tables
 fleetindicfns <- dir(outputLocation, "outcomes_all_simus_relative_to_baseline_sce_*", full.names = TRUE)
@@ -169,7 +184,25 @@ ui <- dashboardPage(
                   convertMenuItem("ts",
                                   menuItem("Time series", tabName = "ts", icon = icon("chart-line"),
                                            selectInput("sel.sce", "Select scenarios", choices = selsce(popdynscenarios,scenames), selected = selsce(popdynscenarios,scenames), multiple = TRUE, selectize = FALSE),
-                                           selectInput("sel.var", "Select a variable", choices = selvar(), selected = "gradva", multiple = FALSE),
+                                           selectInput("sel.var", "Select a variable", choices = c("Landings","Discards","Effort","F"), selected = "Landings", multiple = FALSE), # choices = selvar()
+                                           conditionalPanel(
+                                             condition = "input['sel.var'] =='Landings' | input['sel.var'] =='Discards'",
+                                             selectInput("sel.bothFractions", "Full catch? (landings + discards)", choices=c("Yes","No"),selected="No")),
+                                           conditionalPanel(
+                                             condition = "input['sel.var'] =='Landings' | input['sel.var'] =='Discards'",
+                                             selectInput("sel.expimp", "Catch from...", choices=c("Explicit vessels","Unmodelled vessels","All vessels"),selected="Explicit vessels")),
+                                           conditionalPanel(
+                                             condition = "input['sel.var'] =='Landings' | input['sel.var'] =='Discards'| input['sel.var'] =='Effort'",
+                                             selectInput("sel.metier", "Métier", choices=c("All",0:16),selected="All",multiple=T)),
+                                           conditionalPanel(
+                                             condition = "input['sel.var'] =='Landings' | input['sel.var'] =='Discards'",
+                                             selectInput("sel.pop", "Population", choices=c("All",0:26),selected="All",multiple=T)),
+                                           conditionalPanel(
+                                             condition = "input['sel.var'] =='Landings' | input['sel.var'] =='Discards'| input['sel.var'] =='Effort'",
+                                             selectInput("sel.aggTime", "Time scale", choices=c("year","month"),selected="year")),
+                                           conditionalPanel(
+                                             condition = "input['sel.var'] =='F'",
+                                             selectInput("sel.fbar", "F...", choices=c("bar","per age class"),selected="bar")),
                                            checkboxInput("quantCumSum", label = "Cumulative sum", value = TRUE))),
                   convertMenuItem("tab_landis_perpop",
                                   menuItem("Populations", tabName = "tab_landis_perpop", icon = icon("chart-bar"),
@@ -208,9 +241,10 @@ ui <- dashboardPage(
               plotOutput("cumulativeMap", height = "500px")
       ),
       tabItem("ts",
-              fluidRow(
-                sbox(width = 6, plotOutput("linePlot"), title = "", status = "primary", solidHeader = FALSE)
-              )),
+              # fluidRow(
+              #   sbox(width = 6, plotOutput("linePlot"), title = "", status = "primary", solidHeader = FALSE)
+              # ))
+              plotOutput("linePlot", height = "500px")),
       tabItem("tab_landis_perpop",
               fluidRow(
               sbox(width = 6, plotOutput("catchTimeSeriesPlot"), title = "Catch development over time", status = "primary", solidHeader = TRUE),
@@ -433,31 +467,70 @@ server <- function(input, output, session) {
   })
 
   output$linePlot <- renderPlot({
-    req(input$sel.var, input$sel.sce)
-    par(mar = c(4, 5, 1, 1))
-    do_polygon_plot(
-      a_variable = input$sel.var,
-      ybeg = ybeg,
-      yend = yend,
-      documsum = input$quantCumSum,
-      a_set_of_scenarios = input$sel.sce,
-      the_scenario_names =names(selsce(popdynscenarios,scenames)),
-      selected = selected,
-      export = FALSE,
-      a_ylab = switch(input$sel.var,
-                      gradva = "Accumulated Gross Value Added (million EUR)",
-                      rev_from_av_prices = "Income from landings (million EUR)",
-                      effort = "Effort",
-                      nbtrip = "Number of trips",
-                      totland = "Total landings",
-                      ""),
-      add_legend = TRUE,
-      color_legend = c(rgb(94/255,79/255,162/255,0.5), rgb(158/255,1/255,66/255,0.5), rgb(140/255,81/255,10/255,0.4),
-                       rgb(1,0,0,0.5), rgb(0,0.5,1,0.5), rgb(0,1,0.5,0.5), rgb(1,0,0.5,0.5), rgb(0,0,0,0.2)),
-      a_width = 3500,
-      a_height = 1000
-
-    )
+    if(input$sel.var%in%c("Landings","Discards")){
+      scenamesSel = input$sel.sce
+      chosenFraction=input$sel.var
+      metierSel=input$sel.metier
+      popSel=input$sel.pop
+      aggScale=input$sel.aggTime
+      if(input$sel.bothFractions=="Yes") chosenFraction=c("Landings","Discards")
+      Whichscenames=which(scenamesSel%in%attr(explicitCatchTimeSeries,"names"))
+      
+      plotList=list()
+      j=0
+      for(i in Whichscenames){
+        j=j+1
+        #plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries[[i]],aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i]))
+        if(input$sel.expimp=="Explicit vessels") plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries[[i]],aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i]))
+        if(input$sel.expimp=="Unmodelled vessels") plotList[[j]]=as_grob(getImplicitCatchTimeSeries(implicitCatchTimeSeries[[i]],aggScale,popSel,chosenFraction,sce=scenamesSel[i]))
+        if(input$sel.expimp=="All vessels") plotList[[j]]=as_grob(getAllCatchTimeSeries(explicitCatchTimeSeries[[i]],implicitCatchTimeSeries[[i]],aggScale,popSel,chosenFraction,sce=scenamesSel[i]))
+      }
+      numCols = 4
+      if(length(plotList)<4) numCols = length(plotList)
+      plot2render=grid.arrange(grobs=plotList,ncol=numCols)
+    }
+    
+    if(input$sel.var=="F"){
+      scenamesSel = input$sel.sce
+      fbar=T
+      if(input$sel.fbar=="per age class") fbar=F
+      plot2render = getFTimeSeries(subset(FTimeSeries), fbar)
+    }
+    
+    if(input$sel.var=="Effort"){
+      scenamesSel = input$sel.sce
+      aggScale=input$sel.aggTime
+      metNum=input$sel.metier
+      plot2render = getEffortTimeSeries (effortTimeSeries,aggScale,metNum,ybeg)
+    }
+    
+    return(plot2render)
+    
+    # req(input$sel.var, input$sel.sce)
+    # par(mar = c(4, 5, 1, 1))
+    # do_polygon_plot(
+    #   a_variable = input$sel.var,
+    #   ybeg = ybeg,
+    #   yend = yend,
+    #   documsum = input$quantCumSum,
+    #   a_set_of_scenarios = input$sel.sce,
+    #   the_scenario_names =names(selsce(popdynscenarios,scenames)),
+    #   selected = selected,
+    #   export = FALSE,
+    #   a_ylab = switch(input$sel.var,
+    #                   gradva = "Accumulated Gross Value Added (million EUR)",
+    #                   rev_from_av_prices = "Income from landings (million EUR)",
+    #                   effort = "Effort",
+    #                   nbtrip = "Number of trips",
+    #                   totland = "Total landings",
+    #                   ""),
+    #   add_legend = TRUE,
+    #   color_legend = c(rgb(94/255,79/255,162/255,0.5), rgb(158/255,1/255,66/255,0.5), rgb(140/255,81/255,10/255,0.4),
+    #                    rgb(1,0,0,0.5), rgb(0,0.5,1,0.5), rgb(0,1,0.5,0.5), rgb(1,0,0.5,0.5), rgb(0,0,0,0.2)),
+    #   a_width = 3500,
+    #   a_height = 1000
+    # 
+    # )
   })
 
   output$catchTimeSeriesPlot <- renderPlot({

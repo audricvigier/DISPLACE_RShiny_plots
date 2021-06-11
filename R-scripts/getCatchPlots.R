@@ -434,9 +434,9 @@ getExplicitCatchTimeSeries = function(explicitCatch,aggScale="year",metierSel="A
   if("All" %in% metierSel){
     data2plot$metierId="All"
   }else{
-    data2plot=subset(data2plot,metierId%in%levels(data2plot$metierId)[metierSel])
+    data2plot=subset(data2plot,metierId%in%levels(data2plot$metierId)[as.numeric(metierSel)])
   }
-  if(!"All" %in% popSel) data2plot = subset(data2plot,PopId%in%levels(data2plot$PopId)[popSel])
+  if(!"All" %in% popSel) data2plot = subset(data2plot,PopId%in%levels(data2plot$PopId)[as.numeric(popSel)])
   
   data2plot = data2plot %>% 
     group_by(PopId,metierId,Fraction,time) %>% 
@@ -459,7 +459,7 @@ getImplicitCatchTimeSeries = function(implicitCatch,aggScale="year",popSel="All"
   
   if(aggScale=="month") data2plot$time=data2plot$month
   if(aggScale=="year") data2plot$time=data2plot$year
-  if(!"All" %in% popSel) data2plot = subset(data2plot,PopId%in%levels(data2plot$PopId)[popSel])
+  if(!"All" %in% popSel) data2plot = subset(data2plot,PopId%in%levels(data2plot$PopId)[as.numeric(popSel)])
   
   data2plot = data2plot %>% 
     group_by(PopId,Fraction,time) %>% 
@@ -492,7 +492,7 @@ getAllCatchTimeSeries = function(explicitCatch,implicitCatch,aggScale="year",pop
   
   if(aggScale=="month") data2plot$time=data2plot$month
   if(aggScale=="year") data2plot$time=data2plot$year
-  if(!"All" %in% popSel) data2plot = subset(data2plot,PopId%in%levels(data2plot$PopId)[popSel])
+  if(!"All" %in% popSel) data2plot = subset(data2plot,PopId%in%levels(data2plot$PopId)[as.numeric(popSel)])
   
   data2plot = data2plot %>% 
     group_by(PopId,Fraction,time) %>% 

@@ -25,7 +25,7 @@ library(viridis) # colour-blind friendly palettes
 displaceplotLib="D:/work/Displace/displaceplot/R"
 for (fileName in list.files(displaceplotLib)) source(paste(displaceplotLib,fileName,sep="/"))
 shinyLib="D:/work/Displace/DISPLACE_RShiny_plots/R-scripts"
-for (fileName in list.files(shinyLib,pattern=".R")[-c(9,11,12)]) source(paste(shinyLib,fileName,sep="/")) # Issue with "makeStudyAreaMap.R" 
+for (fileName in list.files(shinyLib,pattern=".R")[-c(10,12,13)]) source(paste(shinyLib,fileName,sep="/")) # Issue with "makeStudyAreaMap.R" 
 for (fileName in list.files(paste(shinyLib,"/fromFrancois"),pattern=".R")) source(paste(paste(shinyLib,"/fromFrancois"),fileName,sep="/"))
 
 ##################
@@ -54,6 +54,8 @@ explicit_pops = 0:(general$nbpops-1)
 ###END INPUTS
 ###
 ##################
+
+explicit_pops = 0:(general$nbpops-1)
 
 getStockNames = function(){
   codes=read.table(file=paste(general$main.path.ibm, "/pop_names_CelticSea.txt",sep=""),header=T)
@@ -88,6 +90,14 @@ metierNames = getMetierNames() %>%
   arrange(metierId)
 
 fortnights= getFortnights() # hours give the end of fortnights
+
+getMonths = function(){
+  months=read.table(file=paste(general$main.path.ibm, "/simusspe_CelticSea/tstep_months_2010_2020.dat",sep=""),header=F) %>% 
+    rename(TStep=V1) %>% 
+    mutate(month=1:n())# Hours give the end of the month
+}
+
+months=getMonths()
 
 ##################
 ###
@@ -595,4 +605,33 @@ for(sce in general$namefolderoutput){
   save(FestimatesYear,file=paste(general$main.path,general$case_study,sce,"output/forFPlots.Rdata",sep="/"))
 }
 
-getFTimeSeries(FestimatesYear,F)
+#getFTimeSeries(FestimatesYear,F)
+
+##################
+###
+###ECONOMIC VARIABLES PLOTS
+###
+##################
+
+for(sce in general$namefolderoutput){
+  EconomicsPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  names(EconomicsPertrip)= c('TStepDep', 'TStep', 'reason_back','cumsteaming', 'idx_node',  'Id', 'VE_REF', 'timeatsea', 'fuelcons', 'traveled_dist',  paste('pop.', 0:(general$nbpops-1), sep=''), "freq_metiers", "revenue", "rev_from_av_prices", "rev_explicit_from_av_prices", "fuelcost", "vpuf", "gav", "gradva","sweptr", "revpersweptarea",  paste('disc_',  explicit_pops, sep=''), "GVA", "GVAPerRevenue", "LabourSurplus", "GrossProfit", "NetProfit",  "NetProfitMargin", "GVAPerFTE", "RoFTA", "BER", "CRBER", "NetPresentValue", "numTrips") 
+  EconomicsPertrip = EconomicsPertrip %>% 
+    select(c(TStepDep,TStep,cumsteaming,Id,VE_REF,fuelcons,freq_metiers,rev_from_av_prices,rev_explicit_from_av_prices,fuelcost,vpuf,gradva,GVA,LabourSurplus,GrossProfit,NetProfit,NetProfitMargin,NetPresentValue,numTrips))#Get non-fuel variable costs (and other stuff useful for sanity checks)
+  economicFeatures=read.table(file=file.path(general$main.path.ibm, paste("vesselsspe_", general$case_study, sep=''),paste("vesselsspe_economic_features.dat",sep='')),sep="|")
+  names(economicFeatures)=c("VE_REF","Nb_crew","Annual_other_income","Landing_costs_percent","Crewshare_and_unpaid_labour_costs_percent","Other_variable_costs_per_unit_effort","Annual_insurance_costs_per_crew","Standard_labour_hour_opportunity_costs","Standard_annual_full_time_employment_hours","Other_annual_fixed_costs","Vessel_value","Annual_depreciation_rate","Opportunity_interest_rate","Annual_discount_rate")
+  economicFeatures = economicFeatures%>% 
+    mutate(VE_REF=as.character(VE_REF))
+  
+  EconomicsPertrip = EconomicsPertrip %>% 
+    merge(economicFeatures, by=c("VE_REF")) %>% 
+    mutate(nonFuelvariableCost=Other_variable_costs_per_unit_effort*cumsteaming) %>% 
+    mutate(freq_metiers = sapply(as.character(freq_metiers), function(x) strsplit(x, split="\\(")[[1]][2]))%>% 
+    mutate(freq_metiers = as.numeric(sapply(as.character(freq_metiers), function(x) strsplit(x, split=")")[[1]][1])))
+  
+  save(EconomicsPertrip,file=paste(general$main.path,general$case_study,sce,"output/forEconomicsPlots.Rdata",sep="/"))
+}
+
+getEconomicTimeSeries(data4plot = EconomicsPertrip,variable="revenue",cumulTime=T,metChoice=0, facet=F)
+
+#getEconomicTimeSeries()

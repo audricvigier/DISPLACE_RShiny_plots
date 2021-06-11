@@ -111,7 +111,10 @@
 getFTimeSeries = function(FestimatesYear, fbar=TRUE){
   
   if(!fbar){
-    plot2return = FestimatesYear %>% 
+  plotList=list()
+  for(sce in unique(FestimatesYear$scename)){
+  plotList[[sce]] = FestimatesYear %>% 
+	  filter(scename==sce)%>%
       mutate(age=factor(age)) %>% 
       ggplot(aes(x=year,y=value,colour=age,linetype=age,shape=age))+
         geom_line(size=1)+
@@ -124,15 +127,25 @@ getFTimeSeries = function(FestimatesYear, fbar=TRUE){
         expand_limits(y=0)+
         theme_minimal()+
         theme(axis.title.y = element_text(angle=0,vjust=0.5))
+		
+	plotList[[sce]]=as_grob(plotList[[sce]])
+	}
+		
+	numCols = 4
+    if(length(plotList)<4) numCols = length(plotList)
+    plot2return=grid.arrange(grobs=plotList,ncol=numCols)
   }
   
   if(fbar){
     plot2return = FestimatesYear %>% 
-      ggplot(aes(x=year,y=Fbar))+
+      ggplot(aes(x=year,y=Fbar,colour=scename,linetype=scename,shape=scename))+
         geom_line(size=1)+
         geom_point(size=2)+
         facet_wrap(~spp,scales="free_y")+
-        labs(x="Time step (year)",y="Fishing\nmortality", title = paste("Fbar\n",sce,sep=""))+
+        labs(x="Time step (year)",y="Fishing\nmortality", title ="Fbar")+
+        scale_colour_manual(name="Scenario", values=rep(scales::hue_pal()(5),3)[1:length(unique(FestimatesYear$scename))])+
+        scale_linetype_manual(name="Scenario", values=c(rep(1:2,each=5),3)[1:length(unique(FestimatesYear$scename))])+
+        scale_shape_manual(name="Scenario", values=c(rep(c(15:16),each=5),17)[1:length(unique(FestimatesYear$scename))])+
         expand_limits(y=0)+
         theme_minimal()+
         theme(axis.title.y = element_text(angle=0,vjust=0.5))
