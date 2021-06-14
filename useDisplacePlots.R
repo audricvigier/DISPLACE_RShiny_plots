@@ -251,8 +251,7 @@ for(sce in general$namefolderoutput){
 for(sce in general$namefolderoutput){
   if(!file.exists(paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))){
     myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2]),"_out.db",sep=""))
-    dbListTables(myConn)
-    
+
     #dbListFields(myConn,"VesselLogLike")
     PopValues = dbGetQuery(myConn,"SELECT * FROM PopValues") # To get Cumulated catch per population
     PopDyn = dbGetQuery(myConn,"SELECT * FROM PopDyn") # To get pop dynamics (spatially aggregated)
@@ -318,7 +317,8 @@ for(sce in general$namefolderoutput){
       rename(Long=x,Lat=y)
     
     #save(interimMap,PopValues,PopDyn,interim,RTIrectangle,icesquarterrectangle,file=paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))
-    save(interimMap,interimMapRTI,interimMapICES,interim,RTIrectangle,icesquarterrectangle,file=paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))
+    save(PopDyn,interimMap,interimMapRTI,interimMapICES,interim,RTIrectangle,icesquarterrectangle,file=paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))
+    
   }
   
   if(file.exists(paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))){

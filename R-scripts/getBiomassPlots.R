@@ -226,153 +226,71 @@ getSSB = function(PopDyn){
 # SSBPlot = getSSBPlot(PopDyn)
 
 ##################
-# Get N, B and SSB per length bin,pop,time. 1 list per N, B or SSB. Inside each list, 3 plots showing the same thing in a different way : 1 - x= time step, colous = size bin ; 2 and 3 - z = size bin, colours = time step ; 3 - propotions instead of absolute values
-getNBSSBLengthBin = function(PopDyn){
-  NBSSBLengthBin = PopDyn %>% 
-    group_by(TStep,PopId,PopGroup)  %>%
+# Get N, B and SSB per length bin,pop,time. 1 list per N, B or SSB. Inside each list, 3 plots showing the same thing in a different way : 1 - x= time step, colours = size bin ; 2 and 3 - x = size bin, colours = time step ; 3 - propotions instead of absolute values
+data2plot=biomassTimeSeries
+getNBSSBLengthBin = function(data2plot=biomassTimeSeries,aggScale="year",variable="N",colourVar="sizeBin"){
+  NBSSBLengthBin = data2plot %>% 
+    group_by(TStep,PopId,PopGroup,scename)  %>%
     merge(stockNames, by=c("PopId")) %>%
-    group_by(TStep,species,PopGroup) %>%  
+    group_by(TStep,species,PopGroup,scename) %>%  
     mutate(B=SSB/PropMature) %>% 
-    summarize(SSB=sum(SSB)/1000,B=sum(B)/1000,Nz=sum(Nz))  # Convert in tons 
+    summarize(SSB=sum(SSB)/1000,B=sum(B)/1000,Nz=sum(Nz)) %>%   # Convert in tons 
+    ungroup()
   
-  SSBPlot =NBSSBLengthBin %>% 
-    mutate(PopGroup=as.factor(PopGroup)) %>% 
-    ggplot(aes(TStep,SSB,colour=PopGroup,linetype=PopGroup,shape=PopGroup)) +
-    geom_line(size=1)+
-    geom_point(size=2)+
-    facet_wrap(~species, scales="free_y")+
-    labs(x="Time step (month)",y="SSB\n(tons)",colour="Size bin",linetype="Size bin",shape="Size bin")+
-    expand_limits(y=0)+
-    scale_colour_manual(values=rep(scales::hue_pal()(5),3)[1:14])+
-    scale_linetype_manual(values=rep(1:3,each=5)[1:14])+
-    scale_shape_manual(values=rep(16:18,each=5)[1:14])+
-    theme_minimal()+
-    theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
+  if(aggScale=="year"){
+    NBSSBLengthBin = NBSSBLengthBin %>% 
+      mutate(TStep=factor(TStep,sort(unique(TStep)),labels=0:(length(unique(TStep))-1))) %>% 
+      filter((as.numeric(levels(TStep))[TStep]-1)/12==floor((as.numeric(levels(TStep))[TStep]-1)/12)) %>% 
+      mutate(TStep=as.numeric(levels(TStep))[TStep])
+  }
+  if(variable=="SSB") NBSSBLengthBin$value=NBSSBLengthBin$SSB
+  if(variable=="B") NBSSBLengthBin$value=NBSSBLengthBin$B
+  if(variable=="N") NBSSBLengthBin$value=NBSSBLengthBin$Nz
   
-  SSBPlot2 = NBSSBLengthBin %>% 
-    ungroup() %>% 
-    mutate(TStep=as.factor(TStep)) %>% 
-    ggplot(aes(PopGroup,SSB,colour=TStep,linetype=TStep,shape=TStep)) +
-    geom_line(size=1)+
-    geom_point(size=2)+
-    facet_wrap(~species, scales="free_y")+
-    labs(x="Size bin",y="SSB\n(tons)",colour="Time step (month)",linetype="Time step (month)",shape="Time step (month)")+
-    expand_limits(y=0)+
-    scale_colour_manual(values=rep(scales::hue_pal()(12),4)[1:37])+
-    scale_linetype_manual(values=rep(1:4,each=12)[1:37])+
-    scale_shape_manual(values=rep(16:19,each=12)[1:37])+
-    theme_minimal()+
-    theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
+    if(colourVar=="popGroup"){
+      plot2render =NBSSBLengthBin %>% 
+        mutate(PopGroup=as.factor(PopGroup)) %>% 
+        ggplot(aes(TStep,value,colour=PopGroup,linetype=PopGroup,shape=PopGroup)) +
+        geom_line(size=1)+
+        geom_point(size=2)+
+        facet_wrap(~species, scales="free_y")+
+        labs(x="Time step (month)",y="SSB\n(tons)",colour="Size bin",linetype="Size bin",shape="Size bin")+
+        expand_limits(y=0)+
+        scale_colour_manual(values=rep(scales::hue_pal()(5),3)[1:14])+
+        scale_linetype_manual(values=rep(1:3,each=5)[1:14])+
+        scale_shape_manual(values=rep(16:18,each=5)[1:14])+
+        theme_minimal()+
+        theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
+    }
+    
+    if(colourVar=="sizeBin"){
+      aes1 = length(unique(NBSSBLengthBin$TStep))
+      if(aes1>12) aes1=12
+      aes2 = 1+floor((length(unique(NBSSBLengthBin$TStep))-1)/12)
+      colourPalette = rep(scales::hue_pal()(aes1),aes2)[1:length(unique(NBSSBLengthBin$TStep))]
+      linetypes = rep(1:aes2,each=aes1)[1:length(unique(NBSSBLengthBin$TStep))]
+      shapes = rep((15+1:aes2),each=aes1)[1:length(unique(NBSSBLengthBin$TStep))]
+      plot2render = NBSSBLengthBin %>% 
+        ungroup() %>% 
+        mutate(TStep=as.factor(TStep)) %>% 
+        ggplot(aes(PopGroup,value,colour=TStep,linetype=TStep,shape=TStep)) +
+        geom_line(size=1)+
+        geom_point(size=2)+
+        facet_wrap(~species, scales="free_y")+
+        labs(x="Size bin",y="SSB\n(tons)",colour="Time\nstep\n(month)",linetype="Time\nstep\n(month)",shape="Time\nstep\n(month)")+
+        expand_limits(y=0)+
+        scale_colour_manual(values=colourPalette)+
+        scale_linetype_manual(values=linetypes)+
+        scale_shape_manual(values=shapes)+
+        theme_minimal()+
+        theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
+    }
+    
   
-  SSBPlot3 = NBSSBLengthBin %>% 
-    mutate(SSB=SSB/sum(SSB)) %>% 
-    ungroup() %>% 
-    mutate(TStep=as.factor(TStep)) %>% 
-    ggplot(aes(PopGroup,SSB,colour=TStep,linetype=TStep,shape=TStep)) +
-    geom_line(size=1)+
-    geom_point(size=2)+
-    facet_wrap(~species, scales="free_y")+
-    labs(x="Size bin",y="SSB\ndistribution",colour="Time step (month)",linetype="Time step (month)",shape="Time step (month)")+
-    expand_limits(y=0)+
-    scale_colour_manual(values=rep(scales::hue_pal()(12),4)[1:37])+
-    scale_linetype_manual(values=rep(1:4,each=12)[1:37])+
-    scale_shape_manual(values=rep(16:19,each=12)[1:37])+
-    theme_minimal()+
-    theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
-  
-  BPlot = NBSSBLengthBin %>% 
-    mutate(PopGroup=as.factor(PopGroup)) %>% 
-    ggplot(aes(TStep,B,colour=PopGroup,linetype=PopGroup,shape=PopGroup)) +
-    geom_line(size=1)+
-    geom_point(size=2)+
-    facet_wrap(~species, scales="free_y")+
-    labs(x="Time step (month)",y="B\n(tons)",colour="Size bin",linetype="Size bin",shape="Size bin")+
-    expand_limits(y=0)+
-    scale_colour_manual(values=rep(scales::hue_pal()(5),3)[1:14])+
-    scale_linetype_manual(values=rep(1:3,each=5)[1:14])+
-    scale_shape_manual(values=rep(16:18,each=5)[1:14])+
-    theme_minimal()+
-    theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
-  
-  BPlot2 = NBSSBLengthBin %>% 
-    ungroup() %>% 
-    mutate(TStep=as.factor(TStep)) %>% 
-    ggplot(aes(PopGroup,B,colour=TStep,linetype=TStep,shape=TStep)) +
-    geom_line(size=1)+
-    geom_point(size=2)+
-    facet_wrap(~species, scales="free_y")+
-    labs(x="Size bin",y="B\n(tons)",colour="Time step (month)",linetype="Time step (month)",shape="Time step (month)")+
-    expand_limits(y=0)+
-    scale_colour_manual(values=rep(scales::hue_pal()(12),4)[1:37])+
-    scale_linetype_manual(values=rep(1:4,each=12)[1:37])+
-    scale_shape_manual(values=rep(16:19,each=12)[1:37])+
-    theme_minimal()+
-    theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
-  
-  BPlot3 = NBSSBLengthBin %>% 
-    mutate(B=B/sum(B)) %>% 
-    ungroup() %>% 
-    mutate(TStep=as.factor(TStep)) %>% 
-    ggplot(aes(PopGroup,B,colour=TStep,linetype=TStep,shape=TStep)) +
-    geom_line(size=1)+
-    geom_point(size=2)+
-    facet_wrap(~species, scales="free_y")+
-    labs(x="Size bin",y="B\ndistribution",colour="Time step (month)",linetype="Time step (month)",shape="Time step (month)")+
-    expand_limits(y=0)+
-    scale_colour_manual(values=rep(scales::hue_pal()(12),4)[1:37])+
-    scale_linetype_manual(values=rep(1:4,each=12)[1:37])+
-    scale_shape_manual(values=rep(16:19,each=12)[1:37])+
-    theme_minimal()+
-    theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
-  
-  NPlot = NBSSBLengthBin %>% 
-    mutate(PopGroup=as.factor(PopGroup)) %>% 
-    ggplot(aes(TStep,Nz,colour=PopGroup,linetype=PopGroup,shape=PopGroup)) +
-    geom_line(size=1)+
-    geom_point(size=2)+
-    facet_wrap(~species, scales="free_y")+
-    labs(x="Time step (month)",y="B\n(tons)",colour="Size bin",linetype="Size bin",shape="Size bin")+
-    expand_limits(y=0)+
-    scale_colour_manual(values=rep(scales::hue_pal()(5),3)[1:14])+
-    scale_linetype_manual(values=rep(1:3,each=5)[1:14])+
-    scale_shape_manual(values=rep(16:18,each=5)[1:14])+
-    theme_minimal()+
-    theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
-  
-  
-  NPlot2 = NBSSBLengthBin %>% 
-    ungroup() %>% 
-    mutate(TStep=as.factor(TStep)) %>% 
-    ggplot(aes(PopGroup,Nz,colour=TStep,linetype=TStep,shape=TStep)) +
-    geom_line(size=1)+
-    geom_point(size=2)+
-    facet_wrap(~species, scales="free_y")+
-    labs(x="Size bin",y="Numbers",colour="Time step (month)",linetype="Time step (month)",shape="Time step (month)")+
-    expand_limits(y=0)+
-    scale_colour_manual(values=rep(scales::hue_pal()(12),4)[1:37])+
-    scale_linetype_manual(values=rep(1:4,each=12)[1:37])+
-    scale_shape_manual(values=rep(16:19,each=12)[1:37])+
-    theme_minimal()+
-    theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
-  
-  NPlot3 = NBSSBLengthBin %>% 
-    mutate(Nz=Nz/sum(Nz)) %>% 
-    ungroup() %>% 
-    mutate(TStep=as.factor(TStep)) %>% 
-    ggplot(aes(PopGroup,Nz,colour=TStep,linetype=TStep,shape=TStep)) +
-    geom_line(size=1)+
-    geom_point(size=2)+
-    facet_wrap(~species, scales="free_y")+
-    labs(x="Size bin",y="Numbers\ndistribution",colour="Time step (month)",linetype="Time step (month)",shape="Time step (month)")+
-    expand_limits(y=0)+
-    scale_colour_manual(values=rep(scales::hue_pal()(12),4)[1:37])+
-    scale_linetype_manual(values=rep(1:4,each=12)[1:37])+
-    scale_shape_manual(values=rep(16:19,each=12)[1:37])+
-    theme_minimal()+
-    theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
-  
-  return(list(list(SSBPlot,SSBPlot2,SSBPlot3),list(BPlot,BPlot2,BPlot3),list(NPlot,NPlot2,NPlot3)))
+  return(plot2render)
 }
+
+#DO ANOTHER FUNCTION NOT ACCOUNTING FOR LENGTH BINS
 
 # NBSSBLengthBinPlots = getNBSSBLengthBin(PopDyn)
 

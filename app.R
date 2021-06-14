@@ -83,7 +83,8 @@ metierNames = getMetierNames() %>%
 for (f in c(loglikefns, popdynfns)) load(f, envir = .GlobalEnv)
 
 biomassMaps = effortMaps = allCatchMaps = implicitCatchMaps = explicitCatchMaps = explicitCPUEMaps = explicitCPUEMapsFortnight =list()
-biomassTimeSeries = effortTimeSeries = FTimeSeries = allCatchTimeSeries = implicitCatchTimeSeries = explicitCatchTimeSeries = explicitCPUETimeSeries = explicitCPUETimeSeriesFortnight =list()
+biomassTimeSeries = effortTimeSeries = FTimeSeries = implicitCatchTimeSeries = explicitCatchTimeSeries = explicitCPUETimeSeries = explicitCPUETimeSeriesFortnight =list()
+
 for (sce in popdynscenarios){
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forEffortPlots.Rdata",sep=""))
   effortMaps[[sce]]$polygonsICES=polygonsICES
@@ -95,26 +96,32 @@ for (sce in popdynscenarios){
   biomassMaps[[sce]]$interimMap=interimMap
   biomassMaps[[sce]]$interimMapRTI=interimMapRTI
   biomassMaps[[sce]]$interimMapICES=interimMapICES
+  biomassTimeSeries[[sce]]=PopDyn%>% 
+    mutate(scename=sce)
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forAllCatchsPlots.Rdata",sep=""))
   allCatchMaps[[sce]]$interimMap=allCatchSpatial
   allCatchMaps[[sce]]$interimMapRTI=allCatchSpatialRTI
   allCatchMaps[[sce]]$interimMapICES=allCatchSpatialICES
-  allCatchTimeSeries[[sce]]=allCatchSpatialICES %>% # Save an actual allCatch!
-    group_by(PopId,month,year,Fraction) %>% 
-    summarize(value=sum(value)) %>% 
-    ungroup()
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forImplicitCatchsPlots.Rdata",sep=""))
   implicitCatchMaps[[sce]]$interimMap=implicitCatchSpatial
   implicitCatchMaps[[sce]]$interimMapRTI=implicitCatchSpatialRTI
   implicitCatchMaps[[sce]]$interimMapICES=implicitCatchSpatialICES
-  implicitCatchTimeSeries[[sce]]=implicitCatch
+  implicitCatchTimeSeries[[sce]]=implicitCatch %>% 
+    mutate(scename=sce)
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forExplicitCatchsPlots.Rdata",sep=""))
   explicitCatchMaps[[sce]]$interimMap=explicitCatchSpatial
   explicitCatchMaps[[sce]]$interimMapRTI=explicitCatchSpatialRTI
   explicitCatchMaps[[sce]]$interimMapICES=explicitCatchSpatialICES
-  explicitCatchTimeSeries[[sce]]=explicitCatch
+  explicitCatchTimeSeries[[sce]]=explicitCatch %>% 
+    mutate(scename=sce)
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forExplicitCPUEPlots.Rdata",sep=""))
   explicitCPUEMaps[[sce]]$interimMap=explicitCatchSpatial
+  explicitCPUETimeSeries[[sce]]=explicitCatchSpatial
+  explicitCPUETimeSeriesFortnight[[sce]]=explicitCatchSpatialFortnight
+  explicitCPUETimeSeries[[sce]]=explicitCatchSpatial %>% 
+    mutate(scename=sce)
+  explicitCPUETimeSeriesFortnight[[sce]]=explicitCatchSpatialFortnight %>% 
+    mutate(scename=sce)
   explicitCPUEMaps[[sce]]$interimMapRTI=explicitCatchSpatialRTI
   explicitCPUEMaps[[sce]]$interimMapICES=explicitCatchSpatialICES
   explicitCPUEMapsFortnight[[sce]]$interimMap=explicitCatchSpatialFortnight
@@ -125,8 +132,13 @@ for (sce in popdynscenarios){
     mutate(scename=sce)
 }
 
+biomassTimeSeries = plyr::ldply(biomassTimeSeries)
 FTimeSeries = plyr::ldply(FTimeSeries)
 effortTimeSeries = plyr::ldply(effortTimeSeries)
+explicitCatchTimeSeries = plyr::ldply(explicitCatchTimeSeries)
+implicitCatchTimeSeries = plyr::ldply(implicitCatchTimeSeries)
+explicitCPUETimeSeries = plyr::ldply(explicitCPUETimeSeries)
+explicitCPUETimeSeriesFortnight = plyr::ldply(explicitCPUETimeSeriesFortnight)
 
 ## and read some tables
 fleetindicfns <- dir(outputLocation, "outcomes_all_simus_relative_to_baseline_sce_*", full.names = TRUE)
@@ -184,22 +196,25 @@ ui <- dashboardPage(
                   convertMenuItem("ts",
                                   menuItem("Time series", tabName = "ts", icon = icon("chart-line"),
                                            selectInput("sel.sce", "Select scenarios", choices = selsce(popdynscenarios,scenames), selected = selsce(popdynscenarios,scenames), multiple = TRUE, selectize = FALSE),
-                                           selectInput("sel.var", "Select a variable", choices = c("Landings","Discards","Effort","F"), selected = "Landings", multiple = FALSE), # choices = selvar()
+                                           selectInput("sel.var", "Select a variable", choices = c("Landings","Discards","Effort","F","LPUE","DPUE"), selected = "Landings", multiple = FALSE), # choices = selvar()
                                            conditionalPanel(
-                                             condition = "input['sel.var'] =='Landings' | input['sel.var'] =='Discards'",
+                                             condition = "input['sel.var'] =='Landings' || input['sel.var'] =='Discards'|| input['sel.var'] =='LPUE'|| input['sel.var'] =='DPUE'",
                                              selectInput("sel.bothFractions", "Full catch? (landings + discards)", choices=c("Yes","No"),selected="No")),
                                            conditionalPanel(
-                                             condition = "input['sel.var'] =='Landings' | input['sel.var'] =='Discards'",
+                                             condition = "input['sel.var'] =='Landings' || input['sel.var'] =='Discards'",
                                              selectInput("sel.expimp", "Catch from...", choices=c("Explicit vessels","Unmodelled vessels","All vessels"),selected="Explicit vessels")),
                                            conditionalPanel(
-                                             condition = "input['sel.var'] =='Landings' | input['sel.var'] =='Discards'| input['sel.var'] =='Effort'",
+                                             condition = "((input['sel.var'] =='Landings' || input['sel.var'] =='Discards')  && input['sel.expimp'] =='Explicit vessels')|| ( input['sel.var'] =='LPUE'|| input['sel.var'] =='DPUE')",
+                                             selectInput("sel.facet", "Facet", choices=c("métier","scenario"),selected="métier")),
+                                           conditionalPanel(
+                                             condition = "((input['sel.var'] =='Landings' || input['sel.var'] =='Discards') && input['sel.expimp'] =='Explicit vessels')|| input['sel.var'] =='Effort' || input['sel.var'] =='LPUE'|| input['sel.var'] =='DPUE'",
                                              selectInput("sel.metier", "Métier", choices=c("All",0:16),selected="All",multiple=T)),
                                            conditionalPanel(
-                                             condition = "input['sel.var'] =='Landings' | input['sel.var'] =='Discards'",
+                                             condition = "input['sel.var'] =='Landings' || input['sel.var'] =='Discards' || input['sel.var'] =='LPUE'|| input['sel.var'] =='DPUE'",
                                              selectInput("sel.pop", "Population", choices=c("All",0:26),selected="All",multiple=T)),
                                            conditionalPanel(
-                                             condition = "input['sel.var'] =='Landings' | input['sel.var'] =='Discards'| input['sel.var'] =='Effort'",
-                                             selectInput("sel.aggTime", "Time scale", choices=c("year","month"),selected="year")),
+                                             condition = "input['sel.var'] =='Landings' || input['sel.var'] =='Discards'|| input['sel.var'] =='Effort' || input['sel.var'] =='LPUE'|| input['sel.var'] =='DPUE'",
+                                             selectInput("sel.aggTime", "Time scale", choices=c("year","month","fortnight"),selected="year")),
                                            conditionalPanel(
                                              condition = "input['sel.var'] =='F'",
                                              selectInput("sel.fbar", "F...", choices=c("bar","per age class"),selected="bar")),
@@ -238,13 +253,13 @@ ui <- dashboardPage(
                    div("Fishing vessels of the Irish demersal fishing fleet are considered (DAFM, 2017; EC, 2017). "), collapsed = FALSE)),
 
       tabItem("map",
-              plotOutput("cumulativeMap", height = "500px")
+              plotOutput("cumulativeMap", height = "1000px")
       ),
       tabItem("ts",
               # fluidRow(
               #   sbox(width = 6, plotOutput("linePlot"), title = "", status = "primary", solidHeader = FALSE)
               # ))
-              plotOutput("linePlot", height = "500px")),
+              plotOutput("linePlot", height = "1000px")),
       tabItem("tab_landis_perpop",
               fluidRow(
               sbox(width = 6, plotOutput("catchTimeSeriesPlot"), title = "Catch development over time", status = "primary", solidHeader = TRUE),
@@ -259,6 +274,7 @@ ui <- dashboardPage(
 )
 
 ## Server side logic ----
+
 server <- function(input, output, session) {
   output$speciesTable <- renderTable(read.csv(paste(outputLocation,"/species.csv",sep="")))
   output$gearTable <- renderTable({
@@ -271,8 +287,10 @@ server <- function(input, output, session) {
     updatedItems=list()
     updatedItems[[1]] = c("month","year")
     updatedItems[[2]]=c("Node","ICES rectangle","RTI rectangle")
+    updatedItems[[3]] = c("month","year")
     #if (!input$selmap.variable%in%c("LPUE","DPUE")) updatedItems[[1]] = c("month","year")
     if (input$selmap.variable%in%c("LPUE","DPUE") & input$selmap.rtilike=="No") updatedItems[[1]] = c("month","year","fortnight")
+    if (input$sel.var%in%c("LPUE","DPUE")) updatedItems[[3]] = c("month","year","fortnight")
     if (input$selmap.variable%in%c("LPUE","DPUE") & input$selmap.rtilike=="Yes"){
       updatedItems[[1]] = c("fortnight")
       updatedItems[[2]]=c("RTI rectangle")
@@ -286,6 +304,10 @@ server <- function(input, output, session) {
   
   observe({
     updateSelectInput(session, "selmap.scale",choices = outVar()[[2]], selected =outVar()[[2]][1]) 
+  })
+  
+  observe({
+    updateSelectInput(session, "sel.aggTime",choices = outVar()[[3]], selected =outVar()[[3]][1]) 
   })
   
   mapsOnAgridEffort = function(effortMaps,scale,metierNum,monthNum,scenames){
@@ -470,23 +492,35 @@ server <- function(input, output, session) {
     if(input$sel.var%in%c("Landings","Discards")){
       scenamesSel = input$sel.sce
       chosenFraction=input$sel.var
-      metierSel=input$sel.metier
+      metierSel="All"
+      if(input$sel.expimp=="Explicit vessels") metierSel=input$sel.metier
       popSel=input$sel.pop
       aggScale=input$sel.aggTime
+      facet="métier"
+      if(input$sel.facet=="scenario") facet="scenario"
       if(input$sel.bothFractions=="Yes") chosenFraction=c("Landings","Discards")
-      Whichscenames=which(scenamesSel%in%attr(explicitCatchTimeSeries,"names"))
+      Whichscenames=which(scenamesSel%in%popdynscenarios)
       
       plotList=list()
       j=0
-      for(i in Whichscenames){
-        j=j+1
-        #plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries[[i]],aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i]))
-        if(input$sel.expimp=="Explicit vessels") plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries[[i]],aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i]))
-        if(input$sel.expimp=="Unmodelled vessels") plotList[[j]]=as_grob(getImplicitCatchTimeSeries(implicitCatchTimeSeries[[i]],aggScale,popSel,chosenFraction,sce=scenamesSel[i]))
-        if(input$sel.expimp=="All vessels") plotList[[j]]=as_grob(getAllCatchTimeSeries(explicitCatchTimeSeries[[i]],implicitCatchTimeSeries[[i]],aggScale,popSel,chosenFraction,sce=scenamesSel[i]))
+      if(facet=="scenario"){
+        for(i in Whichscenames){
+          j=j+1
+          #plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries[[i]],aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i]))
+          if(input$sel.expimp=="Explicit vessels") plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries,aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i],facet))
+        }
       }
-      numCols = 4
-      if(length(plotList)<4) numCols = length(plotList)
+      if(facet=="métier"){ 
+        for(metName in metierSel){
+          j=j+1
+          if(input$sel.expimp=="Explicit vessels") plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries,aggScale,metName,popSel,chosenFraction,sce=scenamesSel[Whichscenames],facet))
+          if(input$sel.expimp=="Unmodelled vessels") plotList[[j]]=as_grob(getImplicitCatchTimeSeries(implicitCatchTimeSeries,aggScale,popSel,chosenFraction,sce=scenamesSel[Whichscenames]))
+          if(input$sel.expimp=="All vessels") plotList[[j]]=as_grob(getAllCatchTimeSeries(explicitCatchTimeSeries,implicitCatchTimeSeries,aggScale,popSel,chosenFraction,sce=scenamesSel[Whichscenames]))
+        } 
+      }
+      
+      numCols = 2
+      if(length(plotList)<2) numCols = length(plotList)
       plot2render=grid.arrange(grobs=plotList,ncol=numCols)
     }
     
@@ -502,6 +536,40 @@ server <- function(input, output, session) {
       aggScale=input$sel.aggTime
       metNum=input$sel.metier
       plot2render = getEffortTimeSeries (effortTimeSeries,aggScale,metNum,ybeg)
+    }
+    
+    if(input$sel.var%in%c("LPUE","DPUE")){
+      scenamesSel = input$sel.sce
+      chosenFraction=input$sel.var
+      metierSel=input$sel.metier
+      popSel=input$sel.pop
+      aggScale=input$sel.aggTime
+      facet=input$sel.facet
+      if(input$sel.var=="LPUE") chosenFraction=c("Landings")
+      if(input$sel.var=="DPUE") chosenFraction=c("Discards")
+      if(input$sel.bothFractions=="Yes") chosenFraction=c("Landings","Discards")
+      Whichscenames=which(scenamesSel%in%popdynscenarios)
+      
+      if(aggScale %in% c("year","month")) data2plot=explicitCPUETimeSeries
+      if(aggScale == "fortnight") data2plot=explicitCPUETimeSeriesFortnight
+      
+      plotList=list()
+      j=0
+      if(facet=="scenario"){
+        for(i in Whichscenames){
+          j=j+1
+          plotList[[j]]=as_grob(getExplicitCPUETimeSeries(data2plot,aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i],facet))
+        }
+      }
+      if(facet=="métier"){ 
+          for(metName in metierSel){
+            j=j+1
+            plotList[[j]]=as_grob(getExplicitCPUETimeSeries(data2plot,aggScale,metName,popSel,chosenFraction,sce=scenamesSel[Whichscenames],facet))
+          } 
+      }
+      numCols = 2
+      if(length(plotList)<2) numCols = length(plotList)
+      plot2render=grid.arrange(grobs=plotList,ncol=numCols)
     }
     
     return(plot2render)
@@ -651,6 +719,5 @@ server <- function(input, output, session) {
 
   })
 }
-
 
 shinyApp(ui = ui, server = server, options = list("shiny.autoload.r" = FALSE))

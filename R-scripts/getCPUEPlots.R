@@ -73,37 +73,70 @@
 ##################
 # Prepare time series plots
 
-getExplicitCPUETimeSeries = function(explicitCatchSpatial,aggScale="year",metierSel="All",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce){
-  data2plot = explicitCatchSpatial %>%
-    mutate(metierId=factor(metierId,metierNames$metierId,labels=metierNames$name)) %>%
-    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp))
+# data2plot=explicitCPUETimeSeries
+# metierSel=c(0,3,6,"All")
+# popSel="All"
+# aggScale="year"
+# chosenFraction=c("Landings","Discards")
+# sce=attr(explicitCatchTimeSeries,"names")
+# facet="scenario"
+
+getExplicitCPUETimeSeries = function(data2plot,aggScale="year",metierSel="All",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce,facet="métier"){
+  
+  data2plot = data2plot %>%
+    mutate(metierId=factor(metierId,metierNames$metierId,labels=metierNames$name)) %>% 
+    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
+    mutate(metierId=as.character(metierId))%>% 
+    mutate(PopId=as.character(PopId))
   
   if(aggScale=="fortnight") data2plot$time=data2plot$fortnight
   if(aggScale=="month") data2plot$time=data2plot$month
   if(aggScale=="year") data2plot$time=data2plot$year
   if("All" %in% metierSel){
-    data2plot$metierId="All"
+    data2bind=data2plot %>% 
+      mutate(metierId="All")
+    data2plot=subset(data2plot,metierId%in%c("All",as.character(metierNames$name[metierNames$metierId%in%metierSel[metierSel!="All"]])))
+    data2plot=bind_rows(data2plot,data2bind)
   }else{
-    data2plot=subset(data2plot,metierId%in%levels(data2plot$metierId)[metierSel])
+    data2plot=subset(data2plot,metierId%in%as.character(metierNames$name[metierNames$metierId%in%metierSel]))
   }
-  if(!"All" %in% popSel) data2plot = subset(data2plot,PopId%in%levels(data2plot$PopId)[popSel])
-
-  data2plot = data2plot %>%
-    group_by(PopId,metierId,Fraction,time) %>%
-    summarize(value=sum(value),effort=sum(effort)) %>%
-    filter(Fraction%in%chosenFraction) %>%
-    ungroup() %>%
-    mutate(CPUE=value/effort) %>%
-    ggplot(aes(x=time,y=CPUE,colour=metierId,linetype=Fraction,shape=Fraction,group=interaction(metierId,Fraction,PopId)))+
+  if(!"All" %in% popSel) data2plot = subset(data2plot,PopId%in%as.character(stockNames$spp[stockNames$PopId%in%popSel]))
+  
+  if(facet=="scenario"){
+    data2plot = data2plot %>%
+      filter(Fraction%in%chosenFraction & scename==sce) %>%
+      group_by(PopId,metierId,Fraction,time,scename) %>%
+      summarize(value=sum(value),effort=sum(effort)) %>%
+      ungroup() %>%
+      mutate(CPUE=value/effort) %>%
+      ggplot(aes(x=time,y=CPUE,colour=metierId,linetype=Fraction,shape=Fraction,group=interaction(metierId,Fraction,PopId)))+
+        geom_line(size=1)+
+        geom_point(size=2)+
+        facet_wrap(~PopId,scales="free_y")+
+        labs(x=paste("Time step (",aggScale,")",sep=""),y="CPUE\n(tons/h)",colour="Métier",linetype="Fraction",shape="Fraction", title = paste("Explicit CPUE time series\n",sce,sep=""))+
+        theme_minimal()+
+        theme(axis.title.y = element_text(angle=0,vjust=0.5))
+  }
+  
+  if(facet=="métier"){
+    data2plot = data2plot %>%
+      filter(Fraction%in%chosenFraction & scename %in%sce) %>%
+      group_by(PopId,metierId,Fraction,time,scename) %>%
+      summarize(value=sum(value),effort=sum(effort)) %>%
+      ungroup() %>%
+      mutate(CPUE=value/effort) %>%
+      ggplot(aes(x=time,y=CPUE,colour=scename,linetype=Fraction,shape=Fraction,group=interaction(scename,Fraction,PopId)))+
       geom_line(size=1)+
       geom_point(size=2)+
       facet_wrap(~PopId,scales="free_y")+
-      labs(x=paste("Time step (",aggScale,")",sep=""),y="CPUE\n(tons/h)",colour="Métier",linetype="Fraction",shape="Fraction", title = paste("Explicit CPUE time series\n",sce,sep=""))+
+      labs(x=paste("Time step (",aggScale,")",sep=""),y="CPUE\n(tons/h)",colour="Scenario",linetype="Fraction",shape="Fraction", title = paste("Explicit CPUE time series\n",unique(data2plot$metierId),sep=""))+
       theme_minimal()+
-      theme(axis.title.y = element_text(angle=0,vjust=0.5))
+      theme(axis.title.y = element_text(angle=0,vjust=0.5))  
+  }
   return(data2plot)
 }
 
+# plot2render=getExplicitCPUETimeSeries(explicitCPUETimeSeries,aggScale,metierSel,popSel,chosenFraction,sce=sce,facet)
 
 ##################
 # Prepare bar plots
@@ -137,7 +170,6 @@ getExplicitCPUEBarPlot = function(explicitCatchSpatial,aggScale="year",metierSel
       theme(axis.title.y = element_text(angle=0,vjust=0.5),axis.text.x=element_text(angle=45,vjust=1,hjust=1))
   return(data2plot)
 }
-
 
 ##################
 # Prepare maps
