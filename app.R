@@ -33,6 +33,7 @@ general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displa
 source("R-scripts/getBiomassPlots.R", local = TRUE)
 source("R-scripts/getCatchPlots.R", local = TRUE)
 source("R-scripts/getCPUEPlots.R", local = TRUE)
+source("R-scripts/getEconomicsPlots.R", local = TRUE)
 source("R-scripts/getEffortPlots.R", local = TRUE)
 source("R-scripts/getFPlots.R", local = TRUE)
 source("R-scripts/mapAverageLayerFiles.R", local = TRUE)
@@ -76,6 +77,13 @@ stockNames = getStockNames() %>%
   arrange(PopId)
 metierNames = getMetierNames() %>% 
   arrange(metierId)
+getMonths = function(){
+  months=read.table(file=paste(general$main.path.ibm, "/simusspe_CelticSea/tstep_months_2010_2020.dat",sep=""),header=F) %>%
+    rename(TStep=V1) %>%
+    mutate(month=1:n())# Hours give the end of the month
+}
+months=getMonths()
+
 # annualindicfns <- dir(outputLocation, "lst_annualindic.*RData", full.names = TRUE)
 # annualindicscenarios <- gsub("^.*lst_annualindic_|[.]RData", "", popdynfns)
 ## Load all loglike and popdyn files
@@ -83,7 +91,7 @@ metierNames = getMetierNames() %>%
 for (f in c(loglikefns, popdynfns)) load(f, envir = .GlobalEnv)
 
 biomassMaps = effortMaps = allCatchMaps = implicitCatchMaps = explicitCatchMaps = explicitCPUEMaps = explicitCPUEMapsFortnight =list()
-biomassTimeSeries = effortTimeSeries = FTimeSeries = implicitCatchTimeSeries = explicitCatchTimeSeries = explicitCPUETimeSeries = explicitCPUETimeSeriesFortnight =list()
+biomassTimeSeries = effortTimeSeries = economicsTimeSeries = FTimeSeries = implicitCatchTimeSeries = explicitCatchTimeSeries = explicitCPUETimeSeries = explicitCPUETimeSeriesFortnight =list()
 
 for (sce in popdynscenarios){
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forEffortPlots.Rdata",sep=""))
@@ -130,6 +138,9 @@ for (sce in popdynscenarios){
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forFPlots.Rdata",sep=""))
   FTimeSeries[[sce]]=FestimatesYear %>% 
     mutate(scename=sce)
+  load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forEconomicsPlots.Rdata",sep=""))
+  economicsTimeSeries[[sce]]=EconomicsPertrip %>% 
+    mutate(scename=sce)
 }
 
 biomassTimeSeries = plyr::ldply(biomassTimeSeries)
@@ -139,6 +150,7 @@ explicitCatchTimeSeries = plyr::ldply(explicitCatchTimeSeries)
 implicitCatchTimeSeries = plyr::ldply(implicitCatchTimeSeries)
 explicitCPUETimeSeries = plyr::ldply(explicitCPUETimeSeries)
 explicitCPUETimeSeriesFortnight = plyr::ldply(explicitCPUETimeSeriesFortnight)
+economicsTimeSeries = plyr::ldply(economicsTimeSeries)
 
 ## and read some tables
 fleetindicfns <- dir(outputLocation, "outcomes_all_simus_relative_to_baseline_sce_*", full.names = TRUE)
@@ -196,7 +208,15 @@ ui <- dashboardPage(
                   convertMenuItem("ts",
                                   menuItem("Time series", tabName = "ts", icon = icon("chart-line"),
                                            selectInput("sel.sce", "Select scenarios", choices = selsce(popdynscenarios,scenames), selected = selsce(popdynscenarios,scenames), multiple = TRUE, selectize = FALSE),
-                                           selectInput("sel.var", "Select a variable", choices = c("Landings","Discards","Effort","F","LPUE","DPUE"), selected = "Landings", multiple = FALSE), # choices = selvar()
+                                           selectInput("sel.var", "Select a variable", choices = c("Landings","Discards","Effort","F","LPUE","DPUE","Populations","Economics"), selected = "Landings", multiple = FALSE), # choices = selvar()
+                                           conditionalPanel(
+                                             condition = "input['sel.var'] =='Populations'",
+                                             selectInput("sel.varPop", "Population variable", choices=c("SSB","B","N"),selected="SSB"),
+                                             selectInput("sel.varPopSize", "Display size bins?", choices=c("No","x-axis","colour"),selected="No")),
+                                           conditionalPanel(
+                                             condition = "input['sel.var'] =='Economics'",
+                                             selectInput("sel.varEco", "Economics variable", choices=c("fuelcost","GrossProfit","GVA","LabourSurplus","NetProfit","NetProfitMargin","nonFuelvariableCost","profit","revenue"),selected="revenue"),
+                                             selectInput("sel.facet", "Facet", choices=c("métier","scenario"),selected="métier")),
                                            conditionalPanel(
                                              condition = "input['sel.var'] =='Landings' || input['sel.var'] =='Discards'|| input['sel.var'] =='LPUE'|| input['sel.var'] =='DPUE'",
                                              selectInput("sel.bothFractions", "Full catch? (landings + discards)", choices=c("Yes","No"),selected="No")),
@@ -207,18 +227,21 @@ ui <- dashboardPage(
                                              condition = "((input['sel.var'] =='Landings' || input['sel.var'] =='Discards')  && input['sel.expimp'] =='Explicit vessels')|| ( input['sel.var'] =='LPUE'|| input['sel.var'] =='DPUE')",
                                              selectInput("sel.facet", "Facet", choices=c("métier","scenario"),selected="métier")),
                                            conditionalPanel(
-                                             condition = "((input['sel.var'] =='Landings' || input['sel.var'] =='Discards') && input['sel.expimp'] =='Explicit vessels')|| input['sel.var'] =='Effort' || input['sel.var'] =='LPUE'|| input['sel.var'] =='DPUE'",
+                                             condition = "((input['sel.var'] =='Landings' || input['sel.var'] =='Discards') && input['sel.expimp'] =='Explicit vessels')|| input['sel.var'] =='Effort' || input['sel.var'] =='LPUE'|| input['sel.var'] =='DPUE'|| input['sel.var'] =='Economics'",
                                              selectInput("sel.metier", "Métier", choices=c("All",0:16),selected="All",multiple=T)),
                                            conditionalPanel(
                                              condition = "input['sel.var'] =='Landings' || input['sel.var'] =='Discards' || input['sel.var'] =='LPUE'|| input['sel.var'] =='DPUE'",
                                              selectInput("sel.pop", "Population", choices=c("All",0:26),selected="All",multiple=T)),
                                            conditionalPanel(
-                                             condition = "input['sel.var'] =='Landings' || input['sel.var'] =='Discards'|| input['sel.var'] =='Effort' || input['sel.var'] =='LPUE'|| input['sel.var'] =='DPUE'",
+                                             condition = "input['sel.var'] =='Landings' || input['sel.var'] =='Discards'|| input['sel.var'] =='Effort' || input['sel.var'] =='LPUE'|| input['sel.var'] =='DPUE' || input['sel.var'] =='Populations' || input['sel.var'] =='Economics'",
                                              selectInput("sel.aggTime", "Time scale", choices=c("year","month","fortnight"),selected="year")),
                                            conditionalPanel(
                                              condition = "input['sel.var'] =='F'",
                                              selectInput("sel.fbar", "F...", choices=c("bar","per age class"),selected="bar")),
-                                           checkboxInput("quantCumSum", label = "Cumulative sum", value = TRUE))),
+                                           conditionalPanel(
+                                             condition = "input['sel.var'] =='Economics' || input['sel.var'] =='Effort'|| input['sel.var'] =='Landings' || input['sel.var'] =='Discards'",
+                                             checkboxInput("quantCumSum", label = "Cumulative sum", value = TRUE))
+                                           )) ,
                   convertMenuItem("tab_landis_perpop",
                                   menuItem("Populations", tabName = "tab_landis_perpop", icon = icon("chart-bar"),
                                            selectInput("sel.sce2", "Select scenarios", choices = selsce(popdynscenarios,scenames), selected = selsce(popdynscenarios,scenames), multiple = TRUE, selectize = FALSE),
@@ -490,6 +513,7 @@ server <- function(input, output, session) {
 
   output$linePlot <- renderPlot({
     if(input$sel.var%in%c("Landings","Discards")){
+      cumulTime=input$quantCumSum
       scenamesSel = input$sel.sce
       chosenFraction=input$sel.var
       metierSel="All"
@@ -507,15 +531,15 @@ server <- function(input, output, session) {
         for(i in Whichscenames){
           j=j+1
           #plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries[[i]],aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i]))
-          if(input$sel.expimp=="Explicit vessels") plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries,aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i],facet))
+          if(input$sel.expimp=="Explicit vessels") plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries,aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i],facet,cumulTime))
         }
       }
       if(facet=="métier"){ 
         for(metName in metierSel){
           j=j+1
-          if(input$sel.expimp=="Explicit vessels") plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries,aggScale,metName,popSel,chosenFraction,sce=scenamesSel[Whichscenames],facet))
-          if(input$sel.expimp=="Unmodelled vessels") plotList[[j]]=as_grob(getImplicitCatchTimeSeries(implicitCatchTimeSeries,aggScale,popSel,chosenFraction,sce=scenamesSel[Whichscenames]))
-          if(input$sel.expimp=="All vessels") plotList[[j]]=as_grob(getAllCatchTimeSeries(explicitCatchTimeSeries,implicitCatchTimeSeries,aggScale,popSel,chosenFraction,sce=scenamesSel[Whichscenames]))
+          if(input$sel.expimp=="Explicit vessels") plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries,aggScale,metName,popSel,chosenFraction,sce=scenamesSel[Whichscenames],facet,cumulTime))
+          if(input$sel.expimp=="Unmodelled vessels") plotList[[j]]=as_grob(getImplicitCatchTimeSeries(implicitCatchTimeSeries,aggScale,popSel,chosenFraction,sce=scenamesSel[Whichscenames],cumulTime))
+          if(input$sel.expimp=="All vessels") plotList[[j]]=as_grob(getAllCatchTimeSeries(explicitCatchTimeSeries,implicitCatchTimeSeries,aggScale,popSel,chosenFraction,sce=scenamesSel[Whichscenames],cumulTime))
         } 
       }
       
@@ -535,7 +559,8 @@ server <- function(input, output, session) {
       scenamesSel = input$sel.sce
       aggScale=input$sel.aggTime
       metNum=input$sel.metier
-      plot2render = getEffortTimeSeries (effortTimeSeries,aggScale,metNum,ybeg)
+      cumulTime=input$quantCumSum
+      plot2render = getEffortTimeSeries (effortTimeSeries,aggScale,metNum,ybeg,cumulTime)
     }
     
     if(input$sel.var%in%c("LPUE","DPUE")){
@@ -570,6 +595,55 @@ server <- function(input, output, session) {
       numCols = 2
       if(length(plotList)<2) numCols = length(plotList)
       plot2render=grid.arrange(grobs=plotList,ncol=numCols)
+    }
+    
+    if(input$sel.var=="Populations"){
+      scenamesSel = input$sel.sce
+      aggScale=input$sel.aggTime
+      variable=input$sel.varPop
+      colourVar=input$sel.varPopSize
+      
+      if (colourVar=="No") plot2render = getNBSSBTimeSeries(biomassTimeSeries,aggScale,variable)
+      if (colourVar!="No"){
+        if (colourVar=="x-axis") colourVar ="TStep"
+        if (colourVar=="colour") colourVar ="sizeBin"
+        
+        plotList=list()
+        i=0
+        for(sce in scenamesSel){
+          i=i+1
+          plotList[[i]] = getNBSSBLengthBin(subset(biomassTimeSeries,scename==sce),aggScale,variable,colourVar)
+        }
+        numCols = 2
+        if(length(plotList)<2) numCols = length(plotList)
+        plot2render=grid.arrange(grobs=plotList,ncol=numCols)
+      }
+    }
+    
+    if(input$sel.var=="Economics"){
+      scenamesSel = input$sel.sce
+      facet=input$sel.facet
+      metChoice=input$sel.metier
+      variable=input$sel.varEco
+      colourVar=input$sel.varPopSize
+      cumulTime=input$quantCumSum
+      aggScale=input$sel.aggTime
+      Whichscenames=which(scenamesSel%in%popdynscenarios)
+      
+      if("All" %in% metChoice) metChoice=NA
+      
+      if (facet=="métier") plot2render= getEconomicTimeSeries(economicsTimeSeries,variable,cumulTime,metChoice, facet,sce=scenamesSel[Whichscenames],aggScale)
+      if (facet=="scenario"){
+        plotList=list()
+        i=0
+        for(sce in scenamesSel){
+          i=i+1
+          plotList[[i]] = getEconomicTimeSeries(subset(economicsTimeSeries,scename==sce),variable,cumulTime,metChoice, facet,sce=scenamesSel[i],aggScale)
+        }
+        numCols = 2
+        if(length(plotList)<2) numCols = length(plotList)
+        plot2render=grid.arrange(grobs=plotList,ncol=numCols)
+      }
     }
     
     return(plot2render)

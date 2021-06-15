@@ -204,12 +204,17 @@ returnLastNonNAValue <- function(values,pos){
   return(lastValues[mostRecent])
 }
 
-getEconomicTimeSeries = function(data4plot = EconomicsPertrip,variable="revenue",cumulTime=T,metChoice=0, facet=F){
-
+#Aggregate at month or year level, otherwise rendering the plot is too resource demanding.
+getEconomicTimeSeries = function(data4plot,variable="revenue",cumulTime=T,metChoice=0, facet="métier",sce=NULL,aggScale="month"){
+  
   legendY = paste(variable,"\n","(EUR)",sep="")
-  legendTitle =  paste(variable,"\n",sce,sep="")
+  legendTitle =  variable
+  if(cumulTime) legendTitle = paste("Cumul of ",variable,"\n",sep="")
+  if(facet=="scenario"){
+    legendTitle =  paste(variable,"\n",sce,sep="")
+    if(cumulTime) legendTitle = paste("Cumul of ",variable,"\n",sce,sep="")
+  }
   #if(averageTrip)legendY = paste("Average\n",variable,"\nper trip\n(EUR)",sep="")
-  if(cumulTime) legendTitle = paste("Cumul of ",variable,"\n",sce,sep="")
   #if(cumulTime & averageTrip) legendY = paste("Cumulative\naverage\n",variable,"\nper trip\n(EUR)",sep="")
   
   if(variable=="revenue") data4plot$value = data4plot$rev_from_av_prices
@@ -224,69 +229,108 @@ getEconomicTimeSeries = function(data4plot = EconomicsPertrip,variable="revenue"
   
   if (!is.na(metChoice)) data4plot = subset(data4plot,freq_metiers%in%metChoice)
   if (is.na(metChoice)) data4plot$freq_metiers="All"
-
+  
   if(variable %in%c("revenue","profit","fuelcost","nonFuelvariableCost")){
     data4plot = data4plot %>% 
-      select(value,TStep,freq_metiers) %>% 
-      group_by(TStep,freq_metiers) %>% 
-      summarize(value=sum(value))%>% 
-      ungroup()
+      filter(scename%in%sce) %>% 
+      select(value,TStep,freq_metiers,scename) %>% 
+      mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>x]))] )) %>% 
+      mutate(year=(floor((month-1)/12)))
     
-    if (!is.na(metChoice)) data4plot= mutate(data4plot, freq_metiers = sapply(freq_metiers, function(x) metierNames$name[metierNames$metierId==x] ))
+    if(aggScale=="year") data4plot = rename(data4plot,time=year)
+    if(aggScale=="month") data4plot = rename(data4plot,time=month)
+    
+    data4plot = data4plot %>% 
+      group_by(time,freq_metiers,scename) %>% 
+      summarize(value=sum(value))%>% 
+      ungroup() %>% 
+      mutate(metierId=freq_metiers) %>% 
+      merge(metierNames,by=c("metierId"),all.x=T)
+    
+    #if (!is.na(metChoice)) data4plot= mutate(data4plot, freq_metiers = sapply(freq_metiers, function(x) metierNames$name[metierNames$metierId==x] ))
     
     if(cumulTime){
       data4plot = data4plot %>% 
-        arrange(TStep,freq_metiers) %>% 
-        group_by(freq_metiers) %>% 
+        arrange(time,freq_metiers,scename) %>% 
+        group_by(freq_metiers,scename) %>% 
         mutate(value=cumsum(value)) %>% 
         ungroup()
     }
+    
   }
   
   if(!variable %in%c("revenue","profit","fuelcost","nonFuelvariableCost")){
     data4plot = data4plot %>% 
-      select(value,TStep,freq_metiers,VE_REF) %>% 
-      complete(nesting(freq_metiers, VE_REF),TStep=full_seq(TStep,1)) %>% 
-      group_by(VE_REF) %>% #If for the first time step, GVA is NA, then replacce by 0; do not change it otherwise
-      mutate(value=replace(value,TStep==min(TStep) & is.na(value),0)) %>% 
-      ungroup() %>% 
-      arrange(freq_metiers,VE_REF,TStep) %>% 
-      fill(value,.direction="down") %>% 
-      group_by(freq_metiers,TStep) %>% 
-      summarize(value=sum(value))%>% 
-      ungroup()
+      filter(scename%in%sce) %>% 
+      select(value,TStep,freq_metiers,VE_REF,scename) %>% 
+      mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>x]))] )) %>% 
+      mutate(year=(floor((month-1)/12)))
     
-      if (!is.na(metChoice)) data4plot= mutate(data4plot, freq_metiers = sapply(freq_metiers, function(x) metierNames$name[metierNames$metierId==x] ))
+    if(aggScale=="year") data4plot = rename(data4plot,time=year)
+    if(aggScale=="month") data4plot = rename(data4plot,time=month)
+    
+    data4plot = data4plot %>% 
+      group_by(time,freq_metiers,VE_REF,scename) %>% 
+      summarize(value=sum(value)) %>% 
+      ungroup() %>% 
+      complete(nesting(freq_metiers, VE_REF, scename),time=full_seq(time,1)) %>% 
+      group_by(VE_REF,scename) %>% #If for the first time step, GVA is NA, then replace by 0; do not change it otherwise
+      mutate(value=replace(value,time==min(time) & is.na(value),0)) %>% 
+      ungroup() %>% 
+      arrange(scename,freq_metiers,VE_REF,time) %>% 
+      fill(value,.direction="down") %>% 
+      group_by(freq_metiers,time,scename) %>% 
+      summarize(value=sum(value))%>% 
+      ungroup()%>% 
+      mutate(metierId=freq_metiers) %>% 
+      merge(metierNames,by=c("metierId"),all.x=T)
+    
+    #if (!is.na(metChoice)) data4plot= mutate(data4plot, freq_metiers = sapply(freq_metiers, function(x) metierNames$name[metierNames$metierId==x] ))
     
     if(!cumulTime){
       data4plot = data4plot %>% 
-        arrange(freq_metiers,TStep) %>% 
-        group_by(freq_metiers) %>% 
-        mutate(value=c(min(value[TStep==min(TStep)]),diff(value))) %>% 
+        arrange(scename,freq_metiers,time) %>% 
+        group_by(scename,freq_metiers) %>% 
+        mutate(value=c(min(value[time==min(time)]),diff(value))) %>% 
         ungroup()
     }
   }
-
-  plot2return = ggplot(data4plot,aes(x=TStep,y=value))+#,colour=freq_metiers,linetype=freq_metiers,shape=freq_metiers))+
-    geom_vline(xintercept=months$TStep[months$TStep<max(data4plot$TStep)],linetype="dotted")+
-    labs(x="Time step (hour)",y=legendY,colour="Métier",linetype="Métier",shape="Métier", title = legendTitle)+
+  
+  if(unique(data4plot$freq_metiers)!="All") data4plot$freq_metiers=factor(data4plot$freq_metiers,metierNames$metierId,metierNames$name)
+  
+  plot2return = ggplot(data4plot,aes(x=time,y=value))+#,colour=freq_metiers,linetype=freq_metiers,shape=freq_metiers))+
+    labs(x=paste("Time step (",aggScale,")",sep=""),y=legendY,colour="Scenario",linetype="Scenario",shape="Scenario", title = legendTitle)+
     expand_limits(y=0)+
     theme_minimal()+
     theme(axis.title.y = element_text(angle=0,vjust=0.5))
   
-  if(facet){
+  if(facet=="métier"){
     plot2return = plot2return + facet_wrap(~freq_metiers,scales="free_y")+
-                                        geom_line(size=1)+
-                                        geom_point(size=2)
+      geom_line(size=1,aes(colour=scename,linetype=scename))+
+      geom_point(size=2,aes(colour=scename,shape=scename))
   }
-  if(!facet){
-    plot2return = plot2return +  scale_colour_manual(name="Métier", values=rep(scales::hue_pal()(5),4)[1:length(metChoice)])+
-                                  scale_linetype_manual(name="Métier", values=c(rep(1:4,each=5),3)[1:length(metChoice)])+
-                                  scale_shape_manual(name="Métier", values=c(rep(c(15:18),each=5),17)[1:length(metChoice)])+
-                                  geom_line(size=1,aes(colour=freq_metiers,linetype=freq_metiers))+
-                                  geom_point(size=2,aes(colour=freq_metiers,shape=freq_metiers))
+  
+  if(facet=="scenario"){
+    plot2return = plot2return + 
+      scale_colour_manual(name="Métier", values=rep(scales::hue_pal()(5),4)[1:length(metChoice)])+
+      scale_linetype_manual(name="Métier", values=c(rep(1:4,each=5),3)[1:length(metChoice)])+
+      scale_shape_manual(name="Métier", values=c(rep(c(15:18),each=5),17)[1:length(metChoice)])+
+      geom_line(size=1,aes(colour=freq_metiers,linetype=freq_metiers))+
+      geom_point(size=2,aes(colour=freq_metiers,shape=freq_metiers))
   }
+  
   return(plot2return)
 }
 
-#getEconomicTimeSeries(EconomicsPertrip,variable,cumulTime,metChoice,facet)
+# data4plot = economicsTimeSeries
+# variable="revenue"
+# cumulTime=T
+# metChoice=NA
+# facet="scenario"
+# sce=popdynscenarios[2]
+# aggScale="year"
+# 
+# a=Sys.time()
+# getEconomicTimeSeries(data4plot,variable,cumulTime,metChoice,facet,sce,aggScale)
+# b=Sys.time()
+# b-a

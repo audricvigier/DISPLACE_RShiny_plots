@@ -226,11 +226,11 @@ getSSB = function(PopDyn){
 # SSBPlot = getSSBPlot(PopDyn)
 
 ##################
-# Get N, B and SSB per length bin,pop,time. 1 list per N, B or SSB. Inside each list, 3 plots showing the same thing in a different way : 1 - x= time step, colours = size bin ; 2 and 3 - x = size bin, colours = time step ; 3 - propotions instead of absolute values
-data2plot=biomassTimeSeries
+# Get N, B and SSB per length bin,pop,time. 1 list per N, B or SSB. Inside each list, 3 plots showing the same thing in a different way : 1 - x= time step, colours = size bin ; 2 - x = size bin, colours = time step
+
+
 getNBSSBLengthBin = function(data2plot=biomassTimeSeries,aggScale="year",variable="N",colourVar="sizeBin"){
   NBSSBLengthBin = data2plot %>% 
-    group_by(TStep,PopId,PopGroup,scename)  %>%
     merge(stockNames, by=c("PopId")) %>%
     group_by(TStep,species,PopGroup,scename) %>%  
     mutate(B=SSB/PropMature) %>% 
@@ -243,18 +243,28 @@ getNBSSBLengthBin = function(data2plot=biomassTimeSeries,aggScale="year",variabl
       filter((as.numeric(levels(TStep))[TStep]-1)/12==floor((as.numeric(levels(TStep))[TStep]-1)/12)) %>% 
       mutate(TStep=as.numeric(levels(TStep))[TStep])
   }
-  if(variable=="SSB") NBSSBLengthBin$value=NBSSBLengthBin$SSB
-  if(variable=="B") NBSSBLengthBin$value=NBSSBLengthBin$B
-  if(variable=="N") NBSSBLengthBin$value=NBSSBLengthBin$Nz
+  if(variable=="SSB"){
+    NBSSBLengthBin$value=NBSSBLengthBin$SSB
+    ylabel="SSB\n(tons)"
+  }
+  if(variable=="B"){
+    NBSSBLengthBin$value=NBSSBLengthBin$B
+    ylabel="B\n(tons)"
+  }
+  if(variable=="N"){
+    NBSSBLengthBin$value=NBSSBLengthBin$Nz
+    ylabel="N\n(1000s)"
+  }
   
-    if(colourVar=="popGroup"){
+    if(colourVar=="sizeBin"){
       plot2render =NBSSBLengthBin %>% 
         mutate(PopGroup=as.factor(PopGroup)) %>% 
         ggplot(aes(TStep,value,colour=PopGroup,linetype=PopGroup,shape=PopGroup)) +
         geom_line(size=1)+
         geom_point(size=2)+
         facet_wrap(~species, scales="free_y")+
-        labs(x="Time step (month)",y="SSB\n(tons)",colour="Size bin",linetype="Size bin",shape="Size bin")+
+        geom_vline(xintercept=seq(0.5,max(NBSSBLengthBin$TStep),12),linetype="dotted")+
+        labs(x="Time step (month)",y=ylabel,colour="Size bin",linetype="Size bin",shape="Size bin",title=unique(NBSSBLengthBin$scename))+
         expand_limits(y=0)+
         scale_colour_manual(values=rep(scales::hue_pal()(5),3)[1:14])+
         scale_linetype_manual(values=rep(1:3,each=5)[1:14])+
@@ -263,7 +273,7 @@ getNBSSBLengthBin = function(data2plot=biomassTimeSeries,aggScale="year",variabl
         theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
     }
     
-    if(colourVar=="sizeBin"){
+    if(colourVar=="TStep"){
       aes1 = length(unique(NBSSBLengthBin$TStep))
       if(aes1>12) aes1=12
       aes2 = 1+floor((length(unique(NBSSBLengthBin$TStep))-1)/12)
@@ -277,7 +287,7 @@ getNBSSBLengthBin = function(data2plot=biomassTimeSeries,aggScale="year",variabl
         geom_line(size=1)+
         geom_point(size=2)+
         facet_wrap(~species, scales="free_y")+
-        labs(x="Size bin",y="SSB\n(tons)",colour="Time\nstep\n(month)",linetype="Time\nstep\n(month)",shape="Time\nstep\n(month)")+
+        labs(x="Size bin",y=ylabel,colour="Time\nstep\n(month)",linetype="Time\nstep\n(month)",shape="Time\nstep\n(month)",title=unique(NBSSBLengthBin$scename))+
         expand_limits(y=0)+
         scale_colour_manual(values=colourPalette)+
         scale_linetype_manual(values=linetypes)+
@@ -286,13 +296,55 @@ getNBSSBLengthBin = function(data2plot=biomassTimeSeries,aggScale="year",variabl
         theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
     }
     
-  
   return(plot2render)
 }
 
-#DO ANOTHER FUNCTION NOT ACCOUNTING FOR LENGTH BINS
-
 # NBSSBLengthBinPlots = getNBSSBLengthBin(PopDyn)
+
+#DO ANOTHER FUNCTION NOT ACCOUNTING FOR LENGTH BINS
+getNBSSBTimeSeries = function(data2plot=biomassTimeSeries,aggScale="year",variable="SSB"){
+  data2plot=biomassTimeSeries %>% 
+    mutate(TStep=factor(TStep,sort(unique(TStep)),labels=0:(length(unique(TStep))-1)))
+  
+  if(aggScale=="year"){
+    data2plot = data2plot %>% 
+      filter((as.numeric(levels(TStep))[TStep]-1)/12==floor((as.numeric(levels(TStep))[TStep]-1)/12))
+  }
+  
+  data2plot = data2plot %>% 
+    merge(stockNames, by=c("PopId")) %>% 
+    group_by(TStep,species,scename) %>%  
+    mutate(B=SSB/PropMature) %>% 
+    summarize(SSB=sum(SSB)/1000,B=sum(B)/1000,Nz=sum(Nz)) %>%   # Convert in tons 
+    ungroup()
+  
+  if(variable=="SSB"){
+    data2plot$value=data2plot$SSB
+    ylabel="SSB\n(tons)"
+  }
+  if(variable=="B"){
+    data2plot$value=data2plot$B
+    ylabel="B\n(tons)"
+  }
+  if(variable=="N"){
+    data2plot$value=data2plot$Nz
+    ylabel="N\n(1000s)"
+  }
+  
+  data2plot = data2plot  %>%
+    mutate(TStep=as.numeric(levels(TStep)[TStep]))
+  
+  plot2return=ggplot(data2plot,aes(x=TStep,y=value,colour=scename,linetype=scename,shape=scename)) +
+      geom_line(size=1)+
+      geom_point(size=2)+
+      geom_vline(xintercept=seq(0.5,max(data2plot$TStep),12),linetype="dotted")+
+      facet_wrap(~species, scales="free_y")+
+      labs(x="Time step (month)",y=ylabel,colour="Scenario",linetype="Scenario",shape="Scenario")+
+      expand_limits(y=0)+
+      theme_minimal()+
+      theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
+  return(plot2return)
+}
 
 ##################
 # Get maps of B per pop,time (no info in length bin structure, no possibility to do SSB maps)

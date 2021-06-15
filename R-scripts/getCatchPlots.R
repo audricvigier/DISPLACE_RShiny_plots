@@ -425,14 +425,17 @@ getImplicitCatchSpatial = function(PopValues,explicitCatchSpatial,nodes2merge){
 # Prepare time series plots
 # 
 # data2plot=implicitCatchTimeSeries
-# aggScale="year"
+# dataexplicit=explicitCatchTimeSeries
+# dataimplicit=implicitCatchTimeSeries
+# aggScale="month"
 # metierSel=c("All",0,7,5)
 # popSel="All"
-# chosenFraction=c("Landings","Discards")
-# sce=popdynscenarios[2]
-# facet="scenario"
+# chosenFraction="Landings"
+# sce=popdynscenarios
+# facet="métier"
+# cumulTime=T
 
-getExplicitCatchTimeSeries = function(data2plot=explicitCatch,aggScale="year",metierSel="All",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce,facet="métier"){
+getExplicitCatchTimeSeries = function(data2plot=explicitCatch,aggScale="year",metierSel="All",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce,facet="métier",cumulTime=F){
   data2plot = data2plot %>%
     mutate(metierId=factor(metierId,metierNames$metierId,labels=metierNames$name)) %>% 
     mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
@@ -450,13 +453,24 @@ getExplicitCatchTimeSeries = function(data2plot=explicitCatch,aggScale="year",me
     data2plot=subset(data2plot,metierId%in%as.character(metierNames$name[metierNames$metierId%in%metierSel]))
   }
   if(!"All" %in% popSel) data2plot = subset(data2plot,PopId%in%as.character(stockNames$spp[stockNames$PopId%in%popSel]))
+
   
   if(facet=="scenario"){
     data2plot = data2plot %>% 
       filter(Fraction%in%chosenFraction & scename==sce) %>%
       group_by(PopId,metierId,Fraction,time,scename) %>% 
       summarize(value=sum(value)) %>% 
-      ungroup() %>% 
+      ungroup()
+    
+    if(cumulTime){
+      data2plot = data2plot %>% 
+        arrange(time,PopId,metierId,Fraction,scename) %>% 
+        group_by(PopId,metierId,Fraction,scename) %>% 
+        mutate(value=cumsum(value)) %>% 
+        ungroup()
+    }
+    
+    data2plot = data2plot %>% 
       ggplot(aes(x=time,y=value,colour=metierId,linetype=Fraction,shape=Fraction,group=interaction(metierId,Fraction,PopId)))+
       geom_line(size=1)+
       geom_point(size=2)+
@@ -470,7 +484,17 @@ getExplicitCatchTimeSeries = function(data2plot=explicitCatch,aggScale="year",me
       filter(Fraction%in%chosenFraction & scename %in%sce) %>%
       group_by(PopId,metierId,Fraction,time,scename) %>% 
       summarize(value=sum(value)) %>% 
-      ungroup() %>% 
+      ungroup()
+    
+    if(cumulTime){
+      data2plot = data2plot %>% 
+        arrange(time,PopId,metierId,Fraction,scename) %>% 
+        group_by(PopId,metierId,Fraction,scename) %>% 
+        mutate(value=cumsum(value)) %>% 
+        ungroup()
+    }
+    
+    data2plot = data2plot %>%
       ggplot(aes(x=time,y=value,colour=scename,linetype=Fraction,shape=Fraction,group=interaction(scename,Fraction,PopId)))+
       geom_line(size=1)+
       geom_point(size=2)+
@@ -484,7 +508,7 @@ getExplicitCatchTimeSeries = function(data2plot=explicitCatch,aggScale="year",me
 
 # aaa = getExplicitCatchTimeSeries(explicitCatchTimeSeries,aggScale,metierSel,popSel,chosenFraction,sce=sce,facet)
 
-getImplicitCatchTimeSeries = function(data2plot=implicitCatch,aggScale="year",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce){
+getImplicitCatchTimeSeries = function(data2plot=implicitCatch,aggScale="year",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce,cumulTime=F){
   data2plot = data2plot %>% 
     mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp))%>% 
     mutate(PopId=as.character(PopId))
@@ -497,7 +521,17 @@ getImplicitCatchTimeSeries = function(data2plot=implicitCatch,aggScale="year",po
     group_by(PopId,Fraction,time,scename) %>% 
     summarize(value=sum(value)) %>% 
     filter(Fraction%in%chosenFraction) %>% 
-    ungroup() %>% 
+    ungroup()
+  
+  if(cumulTime){
+    data2plot = data2plot %>% 
+      arrange(time,PopId,Fraction,scename) %>% 
+      group_by(PopId,Fraction,scename) %>% 
+      mutate(value=cumsum(value)) %>% 
+      ungroup()
+  }
+  
+  data2plot = data2plot %>% 
     ggplot(aes(x=time,y=value,colour=scename,linetype=Fraction,shape=Fraction,group=interaction(scename,Fraction,PopId)))+
     geom_line(size=1)+
     geom_point(size=2)+
@@ -510,7 +544,7 @@ getImplicitCatchTimeSeries = function(data2plot=implicitCatch,aggScale="year",po
 
 # aaa = getImplicitCatchTimeSeries(implicitCatchTimeSeries,aggScale,popSel,chosenFraction,sce=sce)
 
-getAllCatchTimeSeries = function(dataexplicit=explicitCatch,dataimplicit=implicitCatch,aggScale="year",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce){
+getAllCatchTimeSeries = function(dataexplicit=explicitCatch,dataimplicit=implicitCatch,aggScale="year",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce,cumulTime=F){
   interim = dataexplicit %>% 
     group_by(PopId,month,year,Fraction,scename) %>% 
     summarize(value=sum(value)) %>% 
@@ -533,7 +567,17 @@ getAllCatchTimeSeries = function(dataexplicit=explicitCatch,dataimplicit=implici
     group_by(PopId,Fraction,time,scename) %>% 
     summarize(value=sum(value)) %>% 
     filter(Fraction%in%chosenFraction) %>% 
-    ungroup() %>% 
+    ungroup()
+  
+    if(cumulTime){
+      data2plot = data2plot %>% 
+        arrange(time,PopId,Fraction,scename) %>% 
+        group_by(PopId,Fraction,scename) %>% 
+        mutate(value=cumsum(value)) %>% 
+        ungroup()
+    }
+  
+  data2plot = data2plot %>%
     ggplot(aes(x=time,y=value,colour=scename,linetype=Fraction,shape=Fraction,group=interaction(scename,Fraction,PopId)))+
     geom_line(size=1)+
     geom_point(size=2)+

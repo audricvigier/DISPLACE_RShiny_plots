@@ -273,7 +273,13 @@ getmapEffortICESAll=function(polygonsICES,gif=FALSE,idMetier=0,monthNum=1,scenam
 ###
 ##################
 
-getEffortTimeSeries <- function(effortPertrip,aggScale="month",metNum="All",ybeg=2010){
+# effortPertrip = effortTimeSeries
+# aggScale="month"
+# metNum="All"
+# ybeg=2010
+# cumulTime=F
+
+getEffortTimeSeries <- function(effortPertrip,aggScale="month",metNum="All",ybeg=2010,cumulTime=F){
 
   effortPertrip = effortPertrip %>% 
     group_by(month,metierId,scename) %>% 
@@ -298,7 +304,18 @@ getEffortTimeSeries <- function(effortPertrip,aggScale="month",metNum="All",ybeg
   plot2return = effortPertrip %>% 
     group_by(time,metierId,scename) %>% 
     summarize(effort=sum(effort,na.rm=T)) %>% 
-    ungroup() %>% 
+    ungroup()
+  
+  #Cumulative option
+  if(cumulTime){
+    plot2return = plot2return %>% 
+      arrange(time,metierId,scename) %>% 
+      group_by(metierId,scename) %>% 
+      mutate(effort=cumsum(effort)) %>% 
+      ungroup()
+  }
+  
+  plot2return = plot2return %>% 
     ggplot(aes(x=time,y=effort,colour=scename,linetype=scename,shape=scename))+
       geom_line(size=1)+
       geom_point(size=2)+
