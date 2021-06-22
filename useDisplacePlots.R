@@ -55,8 +55,6 @@ explicit_pops = 0:(general$nbpops-1)
 ###
 ##################
 
-explicit_pops = 0:(general$nbpops-1)
-
 getStockNames = function(){
   codes=read.table(file=paste(general$main.path.ibm, "/pop_names_CelticSea.txt",sep=""),header=T)
   stockNames=read.table(file=paste(general$main.path.param,"/POPULATIONS/Stock_biological_traits.csv",sep=""),header=T,sep=",") %>% 
@@ -632,6 +630,29 @@ for(sce in general$namefolderoutput){
   save(EconomicsPertrip,file=paste(general$main.path,general$case_study,sce,"output/forEconomicsPlots.Rdata",sep="/"))
 }
 
-getEconomicTimeSeries(data4plot = EconomicsPertrip,variable="revenue",cumulTime=T,metChoice=0, facet=F)
+#getEconomicTimeSeries(data4plot = EconomicsPertrip,variable="revenue",cumulTime=T,metChoice=0, facet=F)
 
-#getEconomicTimeSeries()
+##################
+###
+###ANNUAL INDICATORS
+###
+##################
+
+for(sce in general$namefolderoutput){
+  annualIndicators = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popdyn_annual_indic_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  colnames(annualIndicators)    <-  c("tstep", "stk", "multi", "multi2", "Fbar", "totland_kg", "totdisc_kg", "SSB_kg", "tac", paste0("N",0:10), paste0("F",0:10), paste0("W",0:10), paste0("M",0:10))
+  annualIndicators = annualIndicators[,1:9] %>% 
+    reshape2::melt(id.vars=c("tstep","stk")) %>% 
+    reshape2::dcast(stk+variable~tstep,value.var="value")
+  
+  annualIndicators$ratios = annualIndicators[,dim(annualIndicators)[2]]/annualIndicators[,3]
+  
+  annualIndicators = annualIndicators %>% 
+    select(stk,variable,ratios) %>% 
+    mutate(sce=sce) %>% 
+    filter(variable%in%c("Fbar","totland_kg","totdisc_kg","SSB_kg","tac" )) %>% 
+    mutate(variable=droplevels(variable)) %>% 
+    mutate(variable=fct_recode(variable,"F/Finit"="Fbar","TLand/TLandinit"="totland_kg","TDisc/TDiscinit"="totdisc_kg","SSB/SSBinit"="SSB_kg","Tac/Tacinit" ="tac"))
+  
+  save(annualIndicators,file=paste(general$main.path,general$case_study,sce,"output/forAnnualIndicatorsPlots.Rdata",sep="/"))
+}
