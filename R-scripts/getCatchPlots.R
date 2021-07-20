@@ -285,14 +285,18 @@ getImplicitCatch = function(PopValues,explicitCatch){
 
 #LIMITED TO 1 YEAR SO FAR BECAUS OF DISPLACE HARD CODING
 getImplicitCatchSpatial = function(PopValues,explicitCatchSpatial,nodes2merge){
+  #a=Sys.time() # 8.5 secs
   cumcatchLog = explicitCatchSpatial %>% 
     group_by(PopId,month,year,Fraction,NodeId,icesrectanglecode,rtirectangle,Long,Lat) %>% 
     summarize(value=sum(value)) %>% 
     ungroup() %>% 
     as.data.frame() %>% 
     reshape2::dcast(.,PopId+month+year+NodeId+icesrectanglecode+rtirectangle+Long+Lat~Fraction,value.var="value")
+  #b=Sys.time()
+  #b-a
   
-  ImplicitCatch = PopValues %>% # Takes 2'
+#  a=Sys.time()
+  ImplicitCatch = PopValues %>% # Takes and 3.1 min
     group_by(TStep,PopId,NodeId) %>% # Eliminate duplicates rows at last time step
     filter(row_number() == 1) %>% 
     select(-c(TotalN,TotalW,Impact)) %>% # COnvert to tons
@@ -302,34 +306,52 @@ getImplicitCatchSpatial = function(PopValues,explicitCatchSpatial,nodes2merge){
     group_by(PopId,NodeId) %>% 
     mutate(CumDiscards=c(min(CumDiscards),diff(CumDiscards)),CumCatches=c(min(CumCatches),diff(CumCatches))) %>% # From cumulative time series to time series
     ungroup() %>% 
-    mutate(month = as.factor(TStep))
-  
-  levels(ImplicitCatch$month)=0:(length(levels(ImplicitCatch$month))-1)
-  
-  ImplicitCatch = ImplicitCatch%>%
+    mutate(month = factor(TStep, levels = sort(unique(TStep)), labels=0:(length(unique(TStep))-1)))%>%
     mutate(month=as.numeric(levels(month))[month]) %>% 
     filter(month!=0)
+  # b=Sys.time()
+  # b-a
   
-  # 1'30 for 3 years.
-  ImplicitCatch2 = list()
-  for (monthNum in sort(unique(ImplicitCatch$month))){
-    ImplicitCatch2[[monthNum]] = ImplicitCatch %>% 
-      filter(month ==monthNum) %>% 
-      merge(subset(cumcatchLog, month==monthNum), by=c("month","PopId","NodeId"),all.x=T) %>% 
+  # # 2.735439 mins for 3 years;
+  # a=Sys.time()
+  # ImplicitCatch2 = list()
+  # for (monthNum in sort(unique(ImplicitCatch$month))){
+  #   ImplicitCatch2[[monthNum]] = ImplicitCatch %>% 
+  #     filter(month ==monthNum) %>% 
+  #     merge(subset(cumcatchLog, month==monthNum), by=c("month","PopId","NodeId"),all.x=T) %>% 
+  #     select(-c(icesrectanglecode,rtirectangle,Long,Lat,year)) %>%  # to be redone
+  #     mutate(Landings=replace_na(Landings,0),Discards=replace_na(Discards,0))%>% 
+  #     merge(nodes2merge,by=c("NodeId")) %>% 
+  #     mutate(year=floor((month-1)/12))
+  # }
+  # b=Sys.time()
+  # b-a
+  
+  interimDerivationChunk = function(ImplicitCatchChunk,cumcatchLogChunk,nodes2merge){
+    ImplicitCatch2 = ImplicitCatchChunk %>% 
+      merge(cumcatchLogChunk, by=c("month","PopId","NodeId"),all.x=T) %>% 
       select(-c(icesrectanglecode,rtirectangle,Long,Lat,year)) %>%  # to be redone
       mutate(Landings=replace_na(Landings,0),Discards=replace_na(Discards,0))%>% 
       merge(nodes2merge,by=c("NodeId")) %>% 
       mutate(year=floor((month-1)/12))
+    return(ImplicitCatch2)
   }
+  #a=Sys.time() #  2.574702 mins for 3 years ; takes 2 GB
+  ImplicitCatch = lapply(sort(unique(ImplicitCatch$month)), function(x) interimDerivationChunk(subset(ImplicitCatch, month==x),subset(cumcatchLog, month==x),nodes2merge))
+  # b=Sys.time()
+  # b-a
   
-  ImplicitCatch2 = plyr::ldply(ImplicitCatch2) %>% 
+#  a=Sys.time() # Takes 12 secs and 4GB
+  ImplicitCatch = plyr::ldply(ImplicitCatch) %>% 
     mutate(Landings =CumCatches-Landings, Discards =CumDiscards-Discards) %>% 
     select(-c(CumDiscards,CumCatches,TStep)) %>% 
     #group_by(month,PopId,NodeId,year,icesrectanglecode,rtirectangle,Long,Lat) %>% Useless to group it
     melt(id.vars=c("PopId","month","year","NodeId","icesrectanglecode","rtirectangle","Long","Lat")) %>% 
     rename(Fraction=variable)
+  # b=Sys.time()
+  # b-a
   
-  return(ImplicitCatch2)
+  return(ImplicitCatch)
 }
 
 # explicitCatch = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,nodes2merge) # Includes discards, 13 sec for 3 years

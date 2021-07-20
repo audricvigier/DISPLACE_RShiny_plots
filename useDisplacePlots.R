@@ -26,6 +26,7 @@ displaceplotLib="D:/work/Displace/displaceplot/R"
 for (fileName in list.files(displaceplotLib)) source(paste(displaceplotLib,fileName,sep="/"))
 shinyLib="D:/work/Displace/DISPLACE_RShiny_plots/R-scripts"
 for (fileName in list.files(shinyLib,pattern=".R")[-c(10,12,13)]) source(paste(shinyLib,fileName,sep="/")) # Issue with "makeStudyAreaMap.R" 
+1
 for (fileName in list.files(paste(shinyLib,"/fromFrancois"),pattern=".R")) source(paste(paste(shinyLib,"/fromFrancois"),fileName,sep="/"))
 
 ##################
@@ -44,9 +45,13 @@ general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displa
                                       iCountry=NULL, #???
                                       nbPops=27,
                                       nbSzgroup=14,
-                                      theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
-                                      nbSimus=20,
+                                      #theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
+                                      theScenarios= c("baseline0","baseline1"),
+                                      #nbSimus=20,
+                                      nbSimus=1,
                                       useSQLite=FALSE)
+calib=FALSE
+if(! calib) for (i in 1:length(general$namesimu)) general$namesimu[[i]] = "simu1"
 explicit_pops = 0:(general$nbpops-1)
 
 ##################
@@ -109,7 +114,8 @@ getAggLoglikeFiles(general,explicit_pops=0:26,implicit_pops=NULL,what="weight")
 getAggLoglikeFiles(general,explicit_pops=0:26,implicit_pops=NULL,what="CPUE")
 
 #N IN THOUSANDS per group, time step and pop. No spatial dimension. Also does some plots. WHATEVER THESE PLOTS are supposed to be, redo them with tidyverse. (an SSB plot I've done better (check though); N per size class pop and month (redo with tidyverse)). ALso throws an error because legends are poorly managed.
-getAggPoplikeFiles(general=general,explicit_pops=0:26,the_baseline ="calib_multipliers_")
+#getAggPoplikeFiles(general=general,explicit_pops=0:26,the_baseline ="calib_multipliers_")
+getAggPoplikeFiles(general=general,explicit_pops=0:26,the_baseline ="baseline0")
 
 #Produce average spatial layers over simulations, at a specific time step. Generates a text file with the average layer. How may should I generate (time step, type ?)
 #a_type : anything in that list cumcatches cumcatches_with_threshold cumdiscards cumdiscardsratio cumftime cumsweptarea cumulcatches end inc impact impact_per_szgroup nbchoked start.
@@ -124,10 +130,13 @@ getAggNodeBenthosLayerFiles(general,  a_tstep="34321")
 # get fleet stuff (outcomes_all_simus). Is it that interesting given that I don't intend to compare stochastic simulations?
 # create metier-wise indicators TO BE DONE)
 #This call is equivalent to expressAggLoglikeFilesIndicatorsRelativeToBaselineSce.R, but better implemented
-getSimusOutcomes(general,a_baseline="calib_multipliers_",explicit_pops=0:26,selected="_met_")
+#getSimusOutcomes(general,a_baseline="calib_multipliers_",explicit_pops=0:26,selected="_met_")
+getSimusOutcomes(general,a_baseline="baseline0",explicit_pops=0:26,selected="_met_")
+
 #Does a bar plot on the previously derived indicators
 #This call is equivalent to boxplotAggLoglikeFilesIndicators.R, making it deprectaed
-doOutcomesbarPlot(selected="all",selected_variables = c("feffort", "seffort", "nbtrip", "av_trip_duration", "fishing_based_cpue_explicit", "totland_explicit", "sweptarea", "npv", "av_vpuf_month", "hoover"),selected_scenarios= c("baseline","calib_multipliers_SCE_"))
+#doOutcomesbarPlot(selected="all",selected_variables = c("feffort", "seffort", "nbtrip", "av_trip_duration", "fishing_based_cpue_explicit", "totland_explicit", "sweptarea", "npv", "av_vpuf_month", "hoover"),selected_scenarios= c("baseline","calib_multipliers_SCE_"))
+doOutcomesbarPlot(selected="all",selected_variables = c("feffort", "seffort", "nbtrip", "av_trip_duration", "fishing_based_cpue_explicit", "totland_explicit", "sweptarea", "npv", "av_vpuf_month", "hoover"),selected_scenarios= c("baseline0","baseline1"))
 
 
 ##################
@@ -139,6 +148,7 @@ doOutcomesbarPlot(selected="all",selected_variables = c("feffort", "seffort", "n
 # Catch in Pop Values. Any difference with log like (= non explicit?) If so, I could track what I want.
 for(sce in general$namefolderoutput){
   myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
+  if(! calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[[which(general$namefolderoutput==sce)]],"_out.db",sep=""))
   dbListTables(myConn)
   
   #VesselLogLike = dbGetQuery(myConn,"SELECT * FROM VesselLogLike")  # time at sea for each vessel/metier/trip/harbour (NodeId is the harbour, not the fishing location) . But no fishing time?
@@ -181,7 +191,8 @@ for(sce in general$namefolderoutput){
   
   # Assume that for each trip, catch spatial distribution is proportional to effort spatial distribution
   
-  catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  if(calib) catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  if(!calib) catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",general$namesimu[[which(general$namefolderoutput==sce)]],".dat",sep=""))
   names(catchAndEffortPertrip)= c('TStepDep', 'TStep', 'reason_back','cumsteaming', 'idx_node',  'Id', 'VE_REF', 'timeatsea', 'fuelcons', 'traveled_dist',  paste('pop.', 0:(general$nbpops-1), sep=''), "freq_metiers", "revenue", "rev_from_av_prices", "rev_explicit_from_av_prices", "fuelcost", "vpuf", "gav", "gradva","sweptr", "revpersweptarea",  paste('disc_',  explicit_pops, sep=''), "GVA", "GVAPerRevenue", "LabourSurplus", "GrossProfit", "NetProfit",  "NetProfitMargin", "GVAPerFTE", "RoFTA", "BER", "CRBER", "NetPresentValue", "numTrips")   
   
   effortPertrip = catchAndEffortPertrip %>% 
@@ -248,8 +259,9 @@ for(sce in general$namefolderoutput){
 
 for(sce in general$namefolderoutput){
   if(!file.exists(paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))){
-    myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2]),"_out.db",sep=""))
-
+    myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
+    if(! calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[[which(general$namefolderoutput==sce)]],"_out.db",sep=""))
+    
     #dbListFields(myConn,"VesselLogLike")
     PopValues = dbGetQuery(myConn,"SELECT * FROM PopValues") # To get Cumulated catch per population
     PopDyn = dbGetQuery(myConn,"SELECT * FROM PopDyn") # To get pop dynamics (spatially aggregated)
@@ -341,6 +353,7 @@ for(sce in general$namefolderoutput){
 for(sce in general$namefolderoutput){
   
   myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
+  if(! calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[[which(general$namefolderoutput==sce)]],"_out.db",sep=""))
   dbListTables(myConn)
   
   PopValues = dbGetQuery(myConn,"SELECT * FROM PopValues") # To get Cumulated catch per population
@@ -371,7 +384,9 @@ for(sce in general$namefolderoutput){
     group_by(Id,TStepDep) %>% 
     mutate(prop=effort/sum(effort))
   
-  catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  if(calib) catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  if(!calib) catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",general$namesimu[[which(general$namefolderoutput==sce)]],".dat",sep=""))
+
   names(catchAndEffortPertrip)= c('TStepDep', 'TStep', 'reason_back','cumsteaming', 'idx_node',  'Id', 'VE_REF', 'timeatsea', 'fuelcons', 'traveled_dist',  paste('pop.', 0:(general$nbpops-1), sep=''), "freq_metiers", "revenue", "rev_from_av_prices", "rev_explicit_from_av_prices", "fuelcost", "vpuf", "gav", "gradva","sweptr", "revpersweptarea",  paste('disc_',  explicit_pops, sep=''), "GVA", "GVAPerRevenue", "LabourSurplus", "GrossProfit", "NetProfit",  "NetProfitMargin", "GVAPerFTE", "RoFTA", "BER", "CRBER", "NetPresentValue", "numTrips")   
   
   catchPertrip = catchAndEffortPertrip %>% 
@@ -427,13 +442,23 @@ for(sce in general$namefolderoutput){
   icesquarterrectangle=setValues(icesquarterrectangle, icesNames)
   icesquarterrectangle=as.data.frame(icesquarterrectangle,xy=T)
 
-  
+  #a=Sys.time() # 2.82 mins for these 3 functions.
   explicitCatch = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,fortnights,nodes2merge,"month") # Includes discards, 13 sec for 3 years
-  explicitCatchFortnight = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,fortnights,nodes2merge,"fortnight") 
   explicitCatchSpatial = getExplicitCatchSpatial(catchPertripMonth,"month") # LIMITED TO ONE YEAR SO FAR BECAUSE OF DISPLACE HARD CODING
-  explicitCatchSpatialFortnight = getExplicitCatchSpatial(catchPertripFortnight,"fortnight") # LIMITED TO ONE YEAR SO FAR BECAUSE OF DISPLACE HARD CODING
   implicitCatch = getImplicitCatch(PopValues,explicitCatchSpatial) # Includes discards 2' for 3 years
-  implicitCatchSpatial = getImplicitCatchSpatial(PopValues,explicitCatchSpatial,nodes2merge)# WARNING: ONLY 2010 IMPLICIT CATCH IS PROPERLY DERIVED AT THAT SCALE DUE TO DISPLACE HARDCODING ON VMSLIKE TABLE; 4.42904 mins for 3 years
+  #b=Sys.time()
+  #b-a
+  
+  a=Sys.time()
+  implicitCatchSpatial = getImplicitCatchSpatial(PopValues,explicitCatchSpatial,nodes2merge)# WARNING: ONLY 2010 IMPLICIT CATCH IS PROPERLY DERIVED AT THAT SCALE DUE TO DISPLACE   HARDCODING ON VMSLIKE TABLE; 6 mins for 3 years
+  b=Sys.time()
+  b-a
+  
+  #a=Sys.time() # 40secs
+  explicitCatchFortnight = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,fortnights,nodes2merge,"fortnight") 
+  explicitCatchSpatialFortnight = getExplicitCatchSpatial(catchPertripFortnight,"fortnight") # LIMITED TO ONE YEAR SO FAR BECAUSE OF DISPLACE HARD CODING
+  #b=Sys.time() 
+  #b-a
   
   explicitCatchSpatialICES = explicitCatchSpatial %>%
     group_by(PopId,month,metierId,icesrectanglecode,year,Fraction) %>%
@@ -465,50 +490,46 @@ for(sce in general$namefolderoutput){
     rename(layer=rtirectangle) %>%
     merge(RTIrectangle,by=c("layer"))
   
-  data2process = explicitCatchSpatial %>%
+  #a=Sys.time() # 10 mis for that single step!
+  allCatchSpatial = explicitCatchSpatial %>%
     mutate(year=year-min(year)) %>%
     select(-c(metierId)) %>%
     bind_rows(implicitCatchSpatial)
   
-  data2process2= list()
-  for(monthNum in sort(unique(data2process$month))){
-    data2process2[[monthNum]] = data2process %>%
-      filter(month==monthNum) %>%
+  interimDerivationChunk = function(data2process){
+    data2process = data2process %>%
       group_by(PopId,month,NodeId,icesrectanglecode,rtirectangle,Long,Lat,year,Fraction) %>%
       summarize(value=sum(value,na.rm=T)) %>%
       ungroup()
+    return(data2process)
   }
-  allCatchSpatial=plyr::ldply(data2process2)
+  allCatchSpatial = lapply(sort(unique(allCatchSpatial$month)), function(x) interimDerivationChunk(subset(allCatchSpatial, month==x)))
+  allCatchSpatial=plyr::ldply(allCatchSpatial)
+  # b=Sys.time()
+  # b-a
   
-  data2process = explicitCatchSpatialICES %>%
+  allCatchSpatialICES = explicitCatchSpatialICES %>%
     mutate(year=year-min(year)) %>%
     select(-c(metierId)) %>%
     bind_rows(implicitCatchSpatialICES)
   
-  data2process2= list()
-  for(monthNum in sort(unique(data2process$month))){
-    data2process2[[monthNum]] = data2process %>%
-      filter(month==monthNum) %>%
+  interimDerivationChunk = function(data2process){
+    data2process = data2process %>%
       group_by(layer,PopId,month,year,Fraction,x,y) %>%
       summarize(value=sum(value,na.rm=T)) %>%
       ungroup()
+    return(data2process)
   }
-  allCatchSpatialICES=plyr::ldply(data2process2)
+  allCatchSpatialICES = lapply(sort(unique(allCatchSpatialICES$month)), function(x) interimDerivationChunk(subset(allCatchSpatialICES, month==x)))
+  allCatchSpatialICES=plyr::ldply(allCatchSpatialICES)
   
-  data2process = explicitCatchSpatialRTI %>%
+  allCatchSpatialRTI = explicitCatchSpatialRTI %>%
     mutate(year=year-min(year)) %>%
     select(-c(metierId)) %>%
     bind_rows(implicitCatchSpatialRTI)
   
-  data2process2= list()
-  for(monthNum in sort(unique(data2process$month))){
-    data2process2[[monthNum]] = data2process %>%
-      filter(month==monthNum) %>%
-      group_by(layer,PopId,month,year,Fraction,x,y) %>%
-      summarize(value=sum(value,na.rm=T)) %>%
-      ungroup()
-  }
-  allCatchSpatialRTI=plyr::ldply(data2process2)
+  allCatchSpatialRTI = lapply(sort(unique(allCatchSpatialRTI$month)), function(x) interimDerivationChunk(subset(allCatchSpatialRTI, month==x)))
+  allCatchSpatialRTI=plyr::ldply(allCatchSpatialRTI)
   
   save(explicitCatch,explicitCatchFortnight,explicitCatchSpatial,explicitCatchSpatialFortnight,explicitCatchSpatialICES,explicitCatchSpatialRTI,explicitCatchSpatialRTIFortnight,file=paste(general$main.path,general$case_study,sce,"output/forExplicitCatchsPlots.Rdata",sep="/"))
   save(implicitCatch,implicitCatchSpatial,implicitCatchSpatialICES,implicitCatchSpatialRTI,file=paste(general$main.path,general$case_study,sce,"output/forImplicitCatchsPlots.Rdata",sep="/"))
@@ -581,7 +602,9 @@ for(sce in general$namefolderoutput){
 ##################
 
 for(sce in general$namefolderoutput){
-  FestimatesYear = read.table(file=paste(general$main.path,"/",general$case_study,"/",sce,"/popdyn_annual_indic_",sce,length(general$namesimu[[1]]),".dat",sep=""),header=F)
+  
+  if(calib) FestimatesYear = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popdyn_annual_indic_",sce,length(general$namesimu[[1]]),".dat",sep=""))
+  if(!calib) FestimatesYear = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popdyn_annual_indic_",general$namesimu[[which(general$namefolderoutput==sce)]],".dat",sep=""))
   names(FestimatesYear)=c("TStep","pop","multi","multi2","Fbar","totland_kg","totdisc_kg","SSB_kg","tac","N0","N1","N2","N3","N4","N5","N6","N7","N8","N9","N10","F0","F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","W0","W1","W2","W3","W4","W5","W6","W7","W8","W9","W10","M0","M1","M2","M3","M4","M5","M6","M7","M8","M9","M10")
   
   
@@ -612,7 +635,8 @@ for(sce in general$namefolderoutput){
 ##################
 
 for(sce in general$namefolderoutput){
-  EconomicsPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  if(calib) EconomicsPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  if(!calib) EconomicsPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",general$namesimu[[which(general$namefolderoutput==sce)]],".dat",sep=""))
   names(EconomicsPertrip)= c('TStepDep', 'TStep', 'reason_back','cumsteaming', 'idx_node',  'Id', 'VE_REF', 'timeatsea', 'fuelcons', 'traveled_dist',  paste('pop.', 0:(general$nbpops-1), sep=''), "freq_metiers", "revenue", "rev_from_av_prices", "rev_explicit_from_av_prices", "fuelcost", "vpuf", "gav", "gradva","sweptr", "revpersweptarea",  paste('disc_',  explicit_pops, sep=''), "GVA", "GVAPerRevenue", "LabourSurplus", "GrossProfit", "NetProfit",  "NetProfitMargin", "GVAPerFTE", "RoFTA", "BER", "CRBER", "NetPresentValue", "numTrips") 
   EconomicsPertrip = EconomicsPertrip %>% 
     select(c(TStepDep,TStep,cumsteaming,Id,VE_REF,fuelcons,freq_metiers,rev_from_av_prices,rev_explicit_from_av_prices,fuelcost,vpuf,gradva,GVA,LabourSurplus,GrossProfit,NetProfit,NetProfitMargin,NetPresentValue,numTrips))#Get non-fuel variable costs (and other stuff useful for sanity checks)
@@ -639,7 +663,8 @@ for(sce in general$namefolderoutput){
 ##################
 
 for(sce in general$namefolderoutput){
-  annualIndicators = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popdyn_annual_indic_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  if(calib) annualIndicators = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popdyn_annual_indic_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  if(!calib) annualIndicators = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popdyn_annual_indic_",general$namesimu[[which(general$namefolderoutput==sce)]],".dat",sep=""))
   colnames(annualIndicators)    <-  c("tstep", "stk", "multi", "multi2", "Fbar", "totland_kg", "totdisc_kg", "SSB_kg", "tac", paste0("N",0:10), paste0("F",0:10), paste0("W",0:10), paste0("M",0:10))
   annualIndicators = annualIndicators[,1:9] %>% 
     reshape2::melt(id.vars=c("tstep","stk")) %>% 

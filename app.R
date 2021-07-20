@@ -26,8 +26,10 @@ general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displa
                                       iCountry=NULL, #???
                                       nbPops=27,
                                       nbSzgroup=14,
-                                      theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
-                                      nbSimus=20,
+                                      # theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
+                                      # nbSimus=20,
+                                      theScenarios= c("baseline0","baseline1"),
+                                      nbSimus=1,
                                       useSQLite=FALSE)
 
 source("R-scripts/getAnnualIndicatorsPlots.R", local = TRUE)
@@ -52,13 +54,17 @@ ybeg=2010
 yend=2020
 ## Find available RData files and pick out scenarios
 loglikefns <- dir(outputLocation, "loglike.*RData", full.names = TRUE)
-loglikescenarios <- gsub("^.*agg_|[.]RData", "", loglikefns)
+loglikefns = loglikefns[as.numeric(unlist(sapply(general$namefolderoutput, function(x) grep(x,loglikefns))))]
+loglikescenarios <- unique(gsub("^.*agg_|[.]RData", "", loglikefns))
 popdynfns <- dir(outputLocation, "popdyn.*RData", full.names = TRUE)
-popdynscenarios <- gsub("^.*popdyn_|[.]RData", "", popdynfns)
-scenames=c("Multipliers","Multipliers SCE")
+popdynfns = popdynfns[as.numeric(unlist(sapply(general$namefolderoutput, function(x) grep(x,popdynfns))))]
+popdynscenarios <- unique(gsub("^.*popdyn_|[.]RData", "", popdynfns))
+# scenames=c("Multipliers","Multipliers SCE")
+scenames=c("Baseline 0","Baseline 1")
 what2="weight"
 selected="_all_"
-a_baseline="calib_multipliers_"
+# a_baseline="calib_multipliers_"
+a_baseline="baseline0"
 
 getStockNames = function(){
   codes=read.table(file=paste(general$main.path.ibm, "/pop_names_CelticSea.txt",sep=""),header=T)
