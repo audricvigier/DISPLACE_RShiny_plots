@@ -28,7 +28,7 @@ general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displa
                                       nbSzgroup=14,
                                       # theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
                                       # nbSimus=20,
-                                      theScenarios= c("baseline0","baseline1"),
+                                      theScenarios= paste("baseline",0:4,sep=""),
                                       nbSimus=1,
                                       useSQLite=FALSE)
 
@@ -39,6 +39,7 @@ source("R-scripts/getCPUEPlots.R", local = TRUE)
 source("R-scripts/getEconomicsPlots.R", local = TRUE)
 source("R-scripts/getEffortPlots.R", local = TRUE)
 source("R-scripts/getFPlots.R", local = TRUE)
+source("R-scripts/getRTImaps.R", local = TRUE)
 source("R-scripts/mapAverageLayerFiles.R", local = TRUE)
 source("R-scripts/polygonPlotsFromAggLoglikeFiles.R", local = TRUE)
 source("R-scripts/polygonPlotsFromPopDynFiles.R", local = TRUE)
@@ -60,7 +61,7 @@ popdynfns <- dir(outputLocation, "popdyn.*RData", full.names = TRUE)
 popdynfns = popdynfns[as.numeric(unlist(sapply(general$namefolderoutput, function(x) grep(x,popdynfns))))]
 popdynscenarios <- unique(gsub("^.*popdyn_|[.]RData", "", popdynfns))
 # scenames=c("Multipliers","Multipliers SCE")
-scenames=c("Baseline 0","Baseline 1")
+scenames=c("TAC","TAC + LO","Effort limitation","RTI no update","RTI with update")
 what2="weight"
 selected="_all_"
 # a_baseline="calib_multipliers_"
@@ -98,9 +99,12 @@ months=getMonths()
 for (f in c(loglikefns, popdynfns)) load(f, envir = .GlobalEnv)
 
 biomassMaps = effortMaps = allCatchMaps = implicitCatchMaps = explicitCatchMaps = explicitCPUEMaps = explicitCPUEMapsFortnight =list()
-biomassTimeSeries = effortTimeSeries = economicsTimeSeries = FTimeSeries = implicitCatchTimeSeries = explicitCatchTimeSeries = explicitCPUETimeSeries = explicitCPUETimeSeriesFortnight = annualIndicatorsList=list()
+biomassTimeSeries = effortTimeSeries = economicsTimeSeries = FTimeSeries = implicitCatchTimeSeries = explicitCatchTimeSeries = explicitCPUETimeSeries = explicitCPUETimeSeriesFortnight = annualIndicatorsList= tariffsMaps=list()
 
 for (sce in popdynscenarios){
+  if(sce!=popdynscenarios[1]){ # Clean a bit the memory
+    rm(list=c("polygonsICES","polygonsRTI","effortPertrip","interimMapRTI","interimMapICES","PopDyn","allCatchSpatialRTI","allCatchSpatialICES","implicitCatchSpatialRTI","implicitCatchSpatialICES","explicitCatchSpatial","explicitCatchSpatialRTI","explicitCatchSpatialICES","explicitCatchSpatialFortnight","FestimatesYear","EconomicsPertrip","annualIndicators"))
+  }
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forEffortPlots.Rdata",sep=""))
   effortMaps[[sce]]$polygonsICES=polygonsICES
   effortMaps[[sce]]$polygonsRTI=polygonsRTI
@@ -108,17 +112,17 @@ for (sce in popdynscenarios){
   effortTimeSeries[[sce]]=effortPertrip %>% 
     mutate(scename=sce)
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forBiomassPlots.Rdata",sep=""))
-  biomassMaps[[sce]]$interimMap=interimMap
+  #biomassMaps[[sce]]$interimMap=interimMap
   biomassMaps[[sce]]$interimMapRTI=interimMapRTI
   biomassMaps[[sce]]$interimMapICES=interimMapICES
   biomassTimeSeries[[sce]]=PopDyn%>% 
     mutate(scename=sce)
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forAllCatchsPlots.Rdata",sep=""))
-  allCatchMaps[[sce]]$interimMap=allCatchSpatial
+  #allCatchMaps[[sce]]$interimMap=allCatchSpatial
   allCatchMaps[[sce]]$interimMapRTI=allCatchSpatialRTI
   allCatchMaps[[sce]]$interimMapICES=allCatchSpatialICES
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forImplicitCatchsPlots.Rdata",sep=""))
-  implicitCatchMaps[[sce]]$interimMap=implicitCatchSpatial
+  #implicitCatchMaps[[sce]]$interimMap=implicitCatchSpatial
   implicitCatchMaps[[sce]]$interimMapRTI=implicitCatchSpatialRTI
   implicitCatchMaps[[sce]]$interimMapICES=implicitCatchSpatialICES
   implicitCatchTimeSeries[[sce]]=implicitCatch %>% 
@@ -150,6 +154,9 @@ for (sce in popdynscenarios){
     mutate(scename=sce)
   load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forAnnualIndicatorsPlots.Rdata",sep=""))
   annualIndicatorsList[[sce]]=annualIndicators 
+  load(file=paste("D:/DISPLACE_outputs/CelticSea/",sce,"/output/forRTITariffsPlots.Rdata",sep=""))
+  tariffsMaps[[sce]]=RTImaps
+  if(!is.null(tariffsMaps[[sce]]))  tariffsMaps[[sce]]$scename=sce
 }
 
 biomassTimeSeries = plyr::ldply(biomassTimeSeries)
@@ -161,6 +168,8 @@ explicitCPUETimeSeries = plyr::ldply(explicitCPUETimeSeries)
 explicitCPUETimeSeriesFortnight = plyr::ldply(explicitCPUETimeSeriesFortnight)
 economicsTimeSeries = plyr::ldply(economicsTimeSeries)
 annualIndicatorsList = plyr::ldply(annualIndicatorsList)
+tariffsMaps = tariffsMaps[which(sapply(tariffsMaps, function(x) !is.null(x)))]
+tariffsMaps = plyr::ldply(tariffsMaps)
 
 ## and read some tables
 fleetindicfns <- dir(outputLocation, "outcomes_all_simus_relative_to_baseline_sce_*", full.names = TRUE)
@@ -190,16 +199,18 @@ ui <- dashboardPage(
                   #convertMenuItem("map", menuItem("Maps", tabName = "map", icon = icon("map"),selectInput("sel.mapquantity", "Select quantity", choices = selquantity(), multiple = FALSE, selectize = FALSE))), # cumulativeCatch, discards, ftime, swept area
                   convertMenuItem("map",
                                   menuItem("Maps", tabName = "map", icon = icon("map"),
-                                           selectInput("selmap.variable", "Variable", choices=c("Effort","Biomass","Landings","Discards","LPUE","DPUE"),selected="Effort"),                         
-                                           selectInput("selmap.scale", "Aggregation scale (space)", choices=c("Node","ICES rectangle","RTI rectangle"),selected="Node"),
+                                           selectInput("selmap.variable", "Variable", choices=c("Effort","Biomass","Landings","Discards","LPUE","DPUE","RTI tariff"),selected="Effort"),   
+                                           conditionalPanel(
+                                             condition = "input['selmap.variable']!='RTI tariff'",
+                                             selectInput("selmap.scale", "Aggregation scale (space)", choices=c("Node","ICES rectangle","RTI rectangle"),selected="RTI rectangle")),
                                            conditionalPanel(
                                              condition = "input['selmap.variable']=='Landings' || input['selmap.variable']=='Discards'",
                                              selectInput("selmap.catchVariable", "Catch variable", choices=c("Explicit","Implicit","All"),selected="Explicit")),
-                                          conditionalPanel(
+                                           conditionalPanel(
                                              condition = "input['selmap.variable'] =='LPUE' || input['selmap.variable'] =='DPUE'",
                                              selectInput("selmap.rtilike", "RTI-like maps?", choices=c("No","Yes"),selected="No")),
-                                          
-                                            selectInput("selmap.timescale", "Aggregation scale (time)", choices=c("month","year"),selected="month"),
+                                           
+                                           selectInput("selmap.timescale", "Aggregation scale (time)", choices=c("month","year"),selected="month"),
                                            conditionalPanel(
                                              condition = "input['selmap.timescale'] =='fortnight'",
                                              sliderInput("selmap.fortnight", "Time step (fortnight)", min = 1, max = ((yend-ybeg+1)*26),value=1, step=1, ticks = T, animate = T)),
@@ -209,12 +220,12 @@ ui <- dashboardPage(
                                            conditionalPanel(
                                              condition = "input['selmap.timescale'] =='year'",
                                              sliderInput("selmap.year", "Time step (year)", min = ybeg, max = yend,value=ybeg, step=1, ticks = T, animate = T)),
-                                          conditionalPanel(
-                                            condition = "input['selmap.variable'] !='Biomass'",
-                                            selectInput("selmap.metier", "Métier", choices=c("All",0:16),selected="All")),
-                                          conditionalPanel(
-                                              condition = "input['selmap.variable'] !='Effort'",
-                                              selectInput("selmap.pop", "Population", choices=c(0:(general$nbpops-1)),selected=7)))), # cumulativeCatch, discards, ftime, swept area
+                                           conditionalPanel(
+                                             condition = "input['selmap.variable'] !='Biomass'",
+                                             selectInput("selmap.metier", "Métier", choices=c("All",0:16),selected="All")),
+                                           conditionalPanel(
+                                             condition = "input['selmap.variable'] !='Effort' && input['selmap.variable'] !='RTI tariff'",
+                                             selectInput("selmap.pop", "Population", choices=c(0:(general$nbpops-1)),selected=7)))), # cumulativeCatch, discards, ftime, swept area
                   convertMenuItem("ts",
                                   menuItem("Time series", tabName = "ts", icon = icon("chart-line"),
                                            selectInput("sel.sce", "Select scenarios", choices = selsce(popdynscenarios,scenames), selected = selsce(popdynscenarios,scenames), multiple = TRUE, selectize = FALSE),
@@ -251,7 +262,7 @@ ui <- dashboardPage(
                                            conditionalPanel(
                                              condition = "input['sel.var'] =='Economics' || input['sel.var'] =='Effort'|| input['sel.var'] =='Landings' || input['sel.var'] =='Discards'",
                                              checkboxInput("quantCumSum", label = "Cumulative sum", value = TRUE))
-                                           )) ,
+                                  )) ,
                   convertMenuItem("indicators",
                                   menuItem("Indicators", tabName = "indicators", icon = icon("chart-bar"),
                                            selectInput("indic.sce", "Scenarios", choices = selsce(popdynscenarios,scenames), selected = selsce(popdynscenarios,scenames), multiple = TRUE, selectize = FALSE),
@@ -267,13 +278,13 @@ ui <- dashboardPage(
               sbox(width = 12, title = "Background", status = "primary", solidHeader = FALSE, collapsible = FALSE,
                    div("We present the outcomes of the DISPLACE agent-based modelling platform for simulating bio-economic fisheries dynamics and clarifying options for sustainable and viable fisheries in the Celtic Sea.
                        In the present case study, we address the issue of quota underutilization from choked species
-                    that would arise from annual decisions on TACs not matching the opportunities of individual fishers.
-                   We, therefore, explore the potential benefits of spatial avoidance (or spatial selectivity)
-                   by displacing the fishing to other areas but also measuring the change of pressure on other ecosystem components,
-                    i.e., including i) effects on other species via trophic interactions effects ii) effects on benthic habitats.
-                     An innovative fisheries management measure, a fishing credits system
-                      is used in this context to help to incentivize displacing the fishing towards areas minimizing
-                      the final net effects and is further contrasted against testing spatial management with closed areas.")),
+                       that would arise from annual decisions on TACs not matching the opportunities of individual fishers.
+                       We, therefore, explore the potential benefits of spatial avoidance (or spatial selectivity)
+                       by displacing the fishing to other areas but also measuring the change of pressure on other ecosystem components,
+                       i.e., including i) effects on other species via trophic interactions effects ii) effects on benthic habitats.
+                       An innovative fisheries management measure, a fishing credits system
+                       is used in this context to help to incentivize displacing the fishing towards areas minimizing
+                       the final net effects and is further contrasted against testing spatial management with closed areas.")),
               sbox(width = 6, title = "Study area", status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
                    div(img(src = "studyAreaMap.png", width = "95%"))),
               sbox(width = 6, title = "Species", status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
@@ -282,7 +293,7 @@ ui <- dashboardPage(
                    div(tableOutput("gearTable"))),
               sbox(width = 6, title = "Conditioning fisheries", status = "primary", solidHeader = TRUE, collapsible = TRUE,
                    div("Fishing vessels of the Irish demersal fishing fleet are considered (DAFM, 2017; EC, 2017). "), collapsed = FALSE)),
-
+      
       tabItem("map",
               plotOutput("cumulativeMap", height = "1000px")
       ),
@@ -297,8 +308,10 @@ ui <- dashboardPage(
       # tabItem("tab_plotlymap",
       #         plotlyOutput("cumulativeMaps"))
     )
-  )
 )
+)
+
+
 
 ## Server side logic ----
 
@@ -322,6 +335,7 @@ server <- function(input, output, session) {
       updatedItems[[1]] = c("fortnight")
       updatedItems[[2]]=c("RTI rectangle")
     }
+    if((input$selmap.variable=="Biomass") | (input$selmap.variable%in%c("Landings","Discards") & input$selmap.catchVariable!="Explicit")) updatedItems[[2]]=c("ICES rectangle","RTI rectangle")
     return(updatedItems)
   })
   
@@ -370,9 +384,9 @@ server <- function(input, output, session) {
     i=0
     for(dataset in biomassMaps){
       i=i+1
-      if(scale=="Node"){
-        plotList[[i]]=as_grob(getBiomassMapNode(dataset$interimMap,popNum,timeStep=monthNum,gif=F,scename=scenames[i],scale="Node"))
-      }
+      # if(scale=="Node"){
+      #   plotList[[i]]=as_grob(getBiomassMapNode(dataset$interimMap,popNum,timeStep=monthNum,gif=F,scename=scenames[i],scale="Node"))
+      # }
       if(scale=="ICES rectangle"){
         plotList[[i]]=as_grob(getBiomassMapNode(dataset$interimMapICES,popNum,timeStep=monthNum,gif=F,scename=scenames[i],scale="ICES rectangle"))
       }
@@ -398,14 +412,14 @@ server <- function(input, output, session) {
     # plotList=list()
     # data2plot=NULL
     
-    if(scaleSpace=="Node") scaleSpace = "All"
+    if(scaleSpace=="Node" & catchType=="Explicit") scaleSpace = "All"
     if(scaleSpace=="RTI rectangle") scaleSpace = "RTI"
     if(scaleSpace=="ICES rectangle") scaleSpace = "ICES"
     if (scaleTime=="year" & catchType=="Explicit") timeStep = timeStep -1
     plotList=list()
     i=0
     for(data2map in dataset){
-      if(scaleSpace=="All") data2plot = data2map$interimMap
+      if(scaleSpace=="All" & catchType=="Explicit") data2plot = data2map$interimMap
       if(scaleSpace=="ICES") data2plot = data2map$interimMapICES
       if(scaleSpace=="RTI") data2plot = data2map$interimMapRTI
       i=i+1
@@ -455,6 +469,19 @@ server <- function(input, output, session) {
     return(grid.arrange(grobs=plotList,ncol=numCols))
   }
   
+  mapsOnAgridRTI = function(dataset,timeStep,metierSel,scenames){
+    
+    plotList=list()
+    i=0
+    for(scenameSelected in unique(tariffsMaps$scename)){
+      i=i+1
+      plotList[[i]]=as_grob(getTariffMap(tariffsMaps,timeStep,metierSel,sce=scenameSelected))
+    }
+    numCols = 4
+    if(length(plotList)<4) numCols = length(plotList)
+    return(grid.arrange(grobs=plotList,ncol=numCols))
+  }
+  
   output$cumulativeMap <- renderPlot({
     # # scedir <- "data/CelticSea44/"
     #  scedir <- ""
@@ -483,7 +510,7 @@ server <- function(input, output, session) {
       metierNum=input$selmap.metier
       numOfPop=input$selmap.pop
       catchType=input$selmap.catchVariable
-
+      
       if(input$selmap.timescale=="month") timeStep = input$selmap.month
       if(input$selmap.timescale=="year") timeStep = input$selmap.year-ybeg+1
       
@@ -511,304 +538,319 @@ server <- function(input, output, session) {
       }
     }
     
+    if(input$selmap.variable=="RTI tariff"){
+      metierNum=input$selmap.metier
+      
+      if(metierNum=="All"){
+        metierSubset=metierNames$name
+      }else{
+        metierSubset=metierNames$name[metierNames$metierId %in%metierNum]
+      }
+      
+      if(input$selmap.timescale=="month") timeStep = input$selmap.month
+      if(input$selmap.timescale=="year") timeStep = 12*(input$selmap.year-ybeg)+1
+      
+      plot2render = mapsOnAgridRTI(tariffsMaps,timeStep,metierSubset,attr(tariffsMaps,"names"))
+    }
+    
     return(plot2render)
     
   })
-
-  output$linePlot <- renderPlot({
-    if(input$sel.var%in%c("Landings","Discards")){
-      cumulTime=input$quantCumSum
-      scenamesSel = input$sel.sce
-      chosenFraction=input$sel.var
-      metierSel="All"
-      if(input$sel.expimp=="Explicit vessels") metierSel=input$sel.metier
-      popSel=input$sel.pop
-      aggScale=input$sel.aggTime
-      facet="métier"
-      if(input$sel.facet=="scenario") facet="scenario"
-      if(input$sel.bothFractions=="Yes") chosenFraction=c("Landings","Discards")
-      Whichscenames=which(scenamesSel%in%popdynscenarios)
       
-      plotList=list()
-      j=0
-      if(facet=="scenario"){
-        for(i in Whichscenames){
-          j=j+1
-          #plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries[[i]],aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i]))
-          if(input$sel.expimp=="Explicit vessels") plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries,aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i],facet,cumulTime))
+      output$linePlot <- renderPlot({
+        if(input$sel.var%in%c("Landings","Discards")){
+          cumulTime=input$quantCumSum
+          scenamesSel = input$sel.sce
+          chosenFraction=input$sel.var
+          metierSel="All"
+          if(input$sel.expimp=="Explicit vessels") metierSel=input$sel.metier
+          popSel=input$sel.pop
+          aggScale=input$sel.aggTime
+          facet="métier"
+          if(input$sel.facet=="scenario") facet="scenario"
+          if(input$sel.bothFractions=="Yes") chosenFraction=c("Landings","Discards")
+          Whichscenames=which(scenamesSel%in%popdynscenarios)
+          
+          plotList=list()
+          j=0
+          if(facet=="scenario"){
+            for(i in Whichscenames){
+              j=j+1
+              #plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries[[i]],aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i]))
+              if(input$sel.expimp=="Explicit vessels") plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries,aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i],facet,cumulTime))
+            }
+          }
+          if(facet=="métier"){ 
+            for(metName in metierSel){
+              j=j+1
+              if(input$sel.expimp=="Explicit vessels") plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries,aggScale,metName,popSel,chosenFraction,sce=scenamesSel[Whichscenames],facet,cumulTime))
+              if(input$sel.expimp=="Unmodelled vessels") plotList[[j]]=as_grob(getImplicitCatchTimeSeries(implicitCatchTimeSeries,aggScale,popSel,chosenFraction,sce=scenamesSel[Whichscenames],cumulTime))
+              if(input$sel.expimp=="All vessels") plotList[[j]]=as_grob(getAllCatchTimeSeries(explicitCatchTimeSeries,implicitCatchTimeSeries,aggScale,popSel,chosenFraction,sce=scenamesSel[Whichscenames],cumulTime))
+            } 
+          }
+          
+          numCols = 2
+          if(length(plotList)<2) numCols = length(plotList)
+          plot2render=grid.arrange(grobs=plotList,ncol=numCols)
         }
-      }
-      if(facet=="métier"){ 
-        for(metName in metierSel){
-          j=j+1
-          if(input$sel.expimp=="Explicit vessels") plotList[[j]]=as_grob(getExplicitCatchTimeSeries(explicitCatchTimeSeries,aggScale,metName,popSel,chosenFraction,sce=scenamesSel[Whichscenames],facet,cumulTime))
-          if(input$sel.expimp=="Unmodelled vessels") plotList[[j]]=as_grob(getImplicitCatchTimeSeries(implicitCatchTimeSeries,aggScale,popSel,chosenFraction,sce=scenamesSel[Whichscenames],cumulTime))
-          if(input$sel.expimp=="All vessels") plotList[[j]]=as_grob(getAllCatchTimeSeries(explicitCatchTimeSeries,implicitCatchTimeSeries,aggScale,popSel,chosenFraction,sce=scenamesSel[Whichscenames],cumulTime))
-        } 
-      }
-      
-      numCols = 2
-      if(length(plotList)<2) numCols = length(plotList)
-      plot2render=grid.arrange(grobs=plotList,ncol=numCols)
-    }
-    
-    if(input$sel.var=="F"){
-      scenamesSel = input$sel.sce
-      fbar=T
-      if(input$sel.fbar=="per age class") fbar=F
-      plot2render = getFTimeSeries(subset(FTimeSeries), fbar)
-    }
-    
-    if(input$sel.var=="Effort"){
-      scenamesSel = input$sel.sce
-      aggScale=input$sel.aggTime
-      metNum=input$sel.metier
-      cumulTime=input$quantCumSum
-      plot2render = getEffortTimeSeries (effortTimeSeries,aggScale,metNum,ybeg,cumulTime)
-    }
-    
-    if(input$sel.var%in%c("LPUE","DPUE")){
-      scenamesSel = input$sel.sce
-      chosenFraction=input$sel.var
-      metierSel=input$sel.metier
-      popSel=input$sel.pop
-      aggScale=input$sel.aggTime
-      facet=input$sel.facet
-      if(input$sel.var=="LPUE") chosenFraction=c("Landings")
-      if(input$sel.var=="DPUE") chosenFraction=c("Discards")
-      if(input$sel.bothFractions=="Yes") chosenFraction=c("Landings","Discards")
-      Whichscenames=which(scenamesSel%in%popdynscenarios)
-      
-      if(aggScale %in% c("year","month")) data2plot=explicitCPUETimeSeries
-      if(aggScale == "fortnight") data2plot=explicitCPUETimeSeriesFortnight
-      
-      plotList=list()
-      j=0
-      if(facet=="scenario"){
-        for(i in Whichscenames){
-          j=j+1
-          plotList[[j]]=as_grob(getExplicitCPUETimeSeries(data2plot,aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i],facet))
-        }
-      }
-      if(facet=="métier"){ 
-          for(metName in metierSel){
-            j=j+1
-            plotList[[j]]=as_grob(getExplicitCPUETimeSeries(data2plot,aggScale,metName,popSel,chosenFraction,sce=scenamesSel[Whichscenames],facet))
-          } 
-      }
-      numCols = 2
-      if(length(plotList)<2) numCols = length(plotList)
-      plot2render=grid.arrange(grobs=plotList,ncol=numCols)
-    }
-    
-    if(input$sel.var=="Populations"){
-      scenamesSel = input$sel.sce
-      aggScale=input$sel.aggTime
-      variable=input$sel.varPop
-      colourVar=input$sel.varPopSize
-      
-      if (colourVar=="No") plot2render = getNBSSBTimeSeries(biomassTimeSeries,aggScale,variable)
-      if (colourVar!="No"){
-        if (colourVar=="x-axis") colourVar ="TStep"
-        if (colourVar=="colour") colourVar ="sizeBin"
         
-        plotList=list()
-        i=0
-        for(sce in scenamesSel){
-          i=i+1
-          plotList[[i]] = getNBSSBLengthBin(subset(biomassTimeSeries,scename==sce),aggScale,variable,colourVar)
+        if(input$sel.var=="F"){
+          scenamesSel = input$sel.sce
+          fbar=T
+          if(input$sel.fbar=="per age class") fbar=F
+          plot2render = getFTimeSeries(subset(FTimeSeries), fbar)
         }
-        numCols = 2
-        if(length(plotList)<2) numCols = length(plotList)
-        plot2render=grid.arrange(grobs=plotList,ncol=numCols)
-      }
-    }
-    
-    if(input$sel.var=="Economics"){
-      scenamesSel = input$sel.sce
-      facet=input$sel.facet
-      metChoice=input$sel.metier
-      variable=input$sel.varEco
-      colourVar=input$sel.varPopSize
-      cumulTime=input$quantCumSum
-      aggScale=input$sel.aggTime
-      Whichscenames=which(scenamesSel%in%popdynscenarios)
-      
-      if("All" %in% metChoice) metChoice=NA
-      
-      if (facet=="métier") plot2render= getEconomicTimeSeries(economicsTimeSeries,variable,cumulTime,metChoice, facet,sce=scenamesSel[Whichscenames],aggScale)
-      if (facet=="scenario"){
-        plotList=list()
-        i=0
-        for(sce in scenamesSel){
-          i=i+1
-          plotList[[i]] = getEconomicTimeSeries(subset(economicsTimeSeries,scename==sce),variable,cumulTime,metChoice, facet,sce=scenamesSel[i],aggScale)
+        
+        if(input$sel.var=="Effort"){
+          scenamesSel = input$sel.sce
+          aggScale=input$sel.aggTime
+          metNum=input$sel.metier
+          cumulTime=input$quantCumSum
+          plot2render = getEffortTimeSeries (effortTimeSeries,aggScale,metNum,ybeg,cumulTime)
         }
-        numCols = 2
-        if(length(plotList)<2) numCols = length(plotList)
-        plot2render=grid.arrange(grobs=plotList,ncol=numCols)
-      }
-    }
-    
-    return(plot2render)
-    
-    # req(input$sel.var, input$sel.sce)
-    # par(mar = c(4, 5, 1, 1))
-    # do_polygon_plot(
-    #   a_variable = input$sel.var,
-    #   ybeg = ybeg,
-    #   yend = yend,
-    #   documsum = input$quantCumSum,
-    #   a_set_of_scenarios = input$sel.sce,
-    #   the_scenario_names =names(selsce(popdynscenarios,scenames)),
-    #   selected = selected,
-    #   export = FALSE,
-    #   a_ylab = switch(input$sel.var,
-    #                   gradva = "Accumulated Gross Value Added (million EUR)",
-    #                   rev_from_av_prices = "Income from landings (million EUR)",
-    #                   effort = "Effort",
-    #                   nbtrip = "Number of trips",
-    #                   totland = "Total landings",
-    #                   ""),
-    #   add_legend = TRUE,
-    #   color_legend = c(rgb(94/255,79/255,162/255,0.5), rgb(158/255,1/255,66/255,0.5), rgb(140/255,81/255,10/255,0.4),
-    #                    rgb(1,0,0,0.5), rgb(0,0.5,1,0.5), rgb(0,1,0.5,0.5), rgb(1,0,0.5,0.5), rgb(0,0,0,0.2)),
-    #   a_width = 3500,
-    #   a_height = 1000
-    # 
-    # )
-  })
-  
-  output$indicatorPlot <- renderPlot({
-    
-      scenamesSel = input$indic.sce
-      popVect=input$indic.pop
-      facet=input$indic.facet
-      if("All"%in%popVect) popVect = 0:(general$nbpops-1)
-      Whichscenames=which(scenamesSel%in%popdynscenarios)
+        
+        if(input$sel.var%in%c("LPUE","DPUE")){
+          scenamesSel = input$sel.sce
+          chosenFraction=input$sel.var
+          metierSel=input$sel.metier
+          popSel=input$sel.pop
+          aggScale=input$sel.aggTime
+          facet=input$sel.facet
+          if(input$sel.var=="LPUE") chosenFraction=c("Landings")
+          if(input$sel.var=="DPUE") chosenFraction=c("Discards")
+          if(input$sel.bothFractions=="Yes") chosenFraction=c("Landings","Discards")
+          Whichscenames=which(scenamesSel%in%popdynscenarios)
+          
+          if(aggScale %in% c("year","month")) data2plot=explicitCPUETimeSeries
+          if(aggScale == "fortnight") data2plot=explicitCPUETimeSeriesFortnight
+          
+          plotList=list()
+          j=0
+          if(facet=="scenario"){
+            for(i in Whichscenames){
+              j=j+1
+              plotList[[j]]=as_grob(getExplicitCPUETimeSeries(data2plot,aggScale,metierSel,popSel,chosenFraction,sce=scenamesSel[i],facet))
+            }
+          }
+          if(facet=="métier"){ 
+            for(metName in metierSel){
+              j=j+1
+              plotList[[j]]=as_grob(getExplicitCPUETimeSeries(data2plot,aggScale,metName,popSel,chosenFraction,sce=scenamesSel[Whichscenames],facet))
+            } 
+          }
+          numCols = 2
+          if(length(plotList)<2) numCols = length(plotList)
+          plot2render=grid.arrange(grobs=plotList,ncol=numCols)
+        }
+        
+        if(input$sel.var=="Populations"){
+          scenamesSel = input$sel.sce
+          aggScale=input$sel.aggTime
+          variable=input$sel.varPop
+          colourVar=input$sel.varPopSize
+          
+          if (colourVar=="No") plot2render = getNBSSBTimeSeries(biomassTimeSeries,aggScale,variable)
+          if (colourVar!="No"){
+            if (colourVar=="x-axis") colourVar ="TStep"
+            if (colourVar=="colour") colourVar ="sizeBin"
+            
+            plotList=list()
+            i=0
+            for(sce in scenamesSel){
+              i=i+1
+              plotList[[i]] = getNBSSBLengthBin(subset(biomassTimeSeries,scename==sce),aggScale,variable,colourVar)
+            }
+            numCols = 2
+            if(length(plotList)<2) numCols = length(plotList)
+            plot2render=grid.arrange(grobs=plotList,ncol=numCols)
+          }
+        }
+        
+        if(input$sel.var=="Economics"){
+          scenamesSel = input$sel.sce
+          facet=input$sel.facet
+          metChoice=input$sel.metier
+          variable=input$sel.varEco
+          colourVar=input$sel.varPopSize
+          cumulTime=input$quantCumSum
+          aggScale=input$sel.aggTime
+          Whichscenames=which(scenamesSel%in%popdynscenarios)
+          
+          if("All" %in% metChoice) metChoice=NA
+          
+          if (facet=="métier") plot2render= getEconomicTimeSeries(economicsTimeSeries,variable,cumulTime,metChoice, facet,sce=scenamesSel[Whichscenames],aggScale)
+          if (facet=="scenario"){
+            plotList=list()
+            i=0
+            for(sce in scenamesSel){
+              i=i+1
+              plotList[[i]] = getEconomicTimeSeries(subset(economicsTimeSeries,scename==sce),variable,cumulTime,metChoice, facet,sce=scenamesSel[i],aggScale)
+            }
+            numCols = 2
+            if(length(plotList)<2) numCols = length(plotList)
+            plot2render=grid.arrange(grobs=plotList,ncol=numCols)
+          }
+        }
+        
+        return(plot2render)
+        
+        # req(input$sel.var, input$sel.sce)
+        # par(mar = c(4, 5, 1, 1))
+        # do_polygon_plot(
+        #   a_variable = input$sel.var,
+        #   ybeg = ybeg,
+        #   yend = yend,
+        #   documsum = input$quantCumSum,
+        #   a_set_of_scenarios = input$sel.sce,
+        #   the_scenario_names =names(selsce(popdynscenarios,scenames)),
+        #   selected = selected,
+        #   export = FALSE,
+        #   a_ylab = switch(input$sel.var,
+        #                   gradva = "Accumulated Gross Value Added (million EUR)",
+        #                   rev_from_av_prices = "Income from landings (million EUR)",
+        #                   effort = "Effort",
+        #                   nbtrip = "Number of trips",
+        #                   totland = "Total landings",
+        #                   ""),
+        #   add_legend = TRUE,
+        #   color_legend = c(rgb(94/255,79/255,162/255,0.5), rgb(158/255,1/255,66/255,0.5), rgb(140/255,81/255,10/255,0.4),
+        #                    rgb(1,0,0,0.5), rgb(0,0.5,1,0.5), rgb(0,1,0.5,0.5), rgb(1,0,0.5,0.5), rgb(0,0,0,0.2)),
+        #   a_width = 3500,
+        #   a_height = 1000
+        # 
+        # )
+      })
       
-      plot2render=indicatorsPlot(annualIndicatorsList, popVect,stockNames,scenamesSel[Whichscenames],facet)
-    
-      return(plot2render)
-  })
-
-  # output$catchTimeSeriesPlot <- renderPlot({
-  #   ## ColorBrewer: paired
-  #   ##cols <- c("#a6cee3","#1f78b4","#b2df8a","#33a02c","#fb9a99","#e31a1c","#fdbf6f","#ff7f00","#cab2d6","#6a3d9a")
-  #   ## ColorBrewer: set3
-  #   ##cols <- c("#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd")
-  #   cols <-  c('#7FC97F','#BEAED4','#FDC086','#FFFF99','#386CB0','#F0027F','#BF5B17','#666666','#1B9E77','#D95F02','#7570B3',
-  #              '#E7298A','#66A61E','#E6AB02','#A6761D','#666666','#A6CEE3','#1F78B4','#B2DF8A','#33A02C','#FB9A99','#E31A1C',
-  #              '#FDBF6F','#FF7F00','#CAB2D6','#6A3D9A','#FFFF99','#B15928','#FBB4AE','#B3CDE3','#CCEBC5','#DECBE4','#FED9A6',
-  #              '#FFFFCC','#E5D8BD','#FDDAEC','#F2F2F2','#B3E2CD','#FDCDAC','#CBD5E8','#F4CAE4','#E6F5C9','#FFF2AE','#F1E2CC',
-  #              '#CCCCCC','#E41A1C','#377EB8','#4DAF4A','#984EA3','#FF7F00','#FFFF33','#A65628','#F781BF','#999999','#66C2A5',
-  #              '#FC8D62','#8DA0CB','#E78AC3','#A6D854','#FFD92F','#E5C494','#B3B3B3','#8DD3C7','#FFFFB3','#BEBADA','#FB8072',
-  #              '#80B1D3','#FDB462','#B3DE69','#FCCDE5','#D9D9D9','#BC80BD','#CCEBC5','#FFED6F')
-  #   par(mar = c(6,4,3.5,0.9), xpd = TRUE)
-  #   #onesim <- lst_loglike_agg_weight_all_scebaseline[[1]]
-  #   add <- FALSE
-  #   for (s in input$sel.sce2) {
-  #     onesim <- get(paste0("lst_loglike_agg_weight_all_", s))[[1]]
-  #     onesim <- onesim[onesim$year.month != "NA.NA", ]
-  #     ym <- ym2date(onesim$year.month)
-  #     nms <- names(onesim)
-  #     selected <- onesim[, nms %in% input$sel.pop, drop = FALSE] / 1000
-  #     maxima <- apply(selected, 2, max)
-  #     limits <- c(0, 10, 100, 1000, Inf)
-  #     labels <- paste("Max catches: ", paste(limits[-5], limits[-1], sep = "-"), "tonnes")
-  #     labels[length(labels)] <- "Max catches: > 1000 tonnes"
-  #     lvls <- droplevels(cut(maxima, limits, include.lowest = TRUE,
-  #                            labels = labels))
-  #     switch(length(levels(lvls)),
-  #            "1" = par(mfrow = c(1,1)),
-  #            "2" = par(mfrow = c(2,1)),
-  #            "3" = par(mfrow = c(2,2)),
-  #            "4" = par(mfrow = c(2,2)))
-  #     for (l in levels(lvls)) {
-  #       pops <- selected[, lvls == l, drop = FALSE]
-  #       nms <- as.vector(sapply(names(pops), function(x) popnames$spp[paste0("pop.", popnames$idx) == x]))
-  #       cls <- cols[as.integer(sub("pop.", "", names(pops))) + 1]
-  #       matplot(ym, pops,
-  #               type = "l", ylab = "Catch (tonnes)", xlab = "", add = add, lty = 1, lwd = 3,
-  #               col = cls)
-  #       mtext(l, line = 0.5, cex = 1.3)
-  #       legend("bottomleft", bty = "n", legend = nms, col = cls, inset = c(0, -0.8),
-  #              lty = 1, seg.len = 1, lwd = 3, box.col = "#00000022", ncol = 3, cex = 0.8)
-  #     }
-  #   }
-  # })
-
-#   output$fleetIndicatorsPlot <- renderPlot({
-#     ## par(mar = c(6,4,3.5,0.9), xpd = TRUE)
-#     
-#     selOutcome=substr(selected,1,str_length(selected)-1)
-#     outcomes <- get(paste0("relative_to_baseline_sce", selOutcome))
-#     ## CAUTION: (not the same levels when reading or when using directly the obj in the env)
-#     # levels(outcomes$scenario) <-  c("sceavchok","sceavchokpszpctrastopifchok",
-#     #                                "sceavchokpszpectra",
-#     #                                "sceavhtariffspszpctratariffs",   "scebaseline",
-#     #                                "scesizespectrastopifchok", "scetrgthtariffspszpctratariffs")
-# 
-# 
-#     # add baseline at 0,0,0, etc.
-#     baseline <- outcomes[outcomes$scenario == outcomes$scenario[1],]  # init
-#     baseline$ratio_percent <-0
-#     baseline$scenario <- "baseline"
-#     outcomes <- rbind.data.frame(baseline, outcomes)
-#     outcomes$scenario <- factor(outcomes$scenario)
-# 
-#     selected_variables <- c("feffort", "seffort", "nbtrip", "av_trip_duration", "fishing_based_cpue_explicit","totland_explicit","sweptarea", "npv", "av_vpuf_month", "hoover")
-#     outcomes           <- outcomes[outcomes$variable %in% selected_variables,]
-# 
-#     outcomes$variable <- factor(outcomes$variable)
-#     outcomes$variable <- factor(outcomes$variable, levels=selected_variables, labels= c( "F. effort", "S. effort", "Nb. of trips","Trip duration",  "CPUE at fishing","Tot landings","Swept Area","NPV", "VPUF", "Income inequality"))
-# 
-#     
-#     selected_scenarios <- input$sel.sce2
-#     nms <- names(selsce(popdynscenarios,scenames))[selsce(popdynscenarios,scenames) == input$sel.sce2]
-# 
-#     outcomes <- outcomes[outcomes$scenario %in% selected_scenarios,]
-#     #outcomes$scenario <- factor(outcomes$scenario)
-#     outcomes$scenario <- factor(outcomes$scenario, levels=selected_scenarios, labels=  nms)
-# 
-#     outcomes[outcomes$ratio_percent< -25, "ratio_percent"] <- -25
-#     outcomes[outcomes$ratio_percent>25, "ratio_percent"] <- 25
-#     p <- ggplot(outcomes[outcomes$ratio_percent>=-25 & outcomes$ratio_percent<=25,], aes(factor(variable), ratio_percent))  + geom_boxplot(outlier.shape=NA)  +
-#              labs(x = "Indicators", y = "% ratio over the baseline") # + ylim(-20, 20)
-# 
-#     p + facet_wrap( ~ scenario, ncol=2, scales="free_y")    + theme_bw() +
-#        theme(axis.text.x = element_text(angle = 45, hjust = 1), strip.text.x =element_text(size =10),  panel.grid.major = element_line(colour = grey(0.4),linetype =3 ),
-#              strip.background = element_blank(),
-#              panel.border = element_rect(colour = "black"))  +
-#        geom_abline(intercept=0, slope=0, color="grey", lty=2)
-# 
-# }, height = function() {((length(input$sel.sce2) + 1) %/% 2 ) * 300 })
-
-  # output$populationSizePlot <- renderPlot({
-  #   req(input$sel.pop, input$sel.sce2, input$sel.sum.szgroups)
-  #   plot_popdyn(sces = input$sel.sce2,
-  #               scenarios_names= names(selsce(popdynscenarios,scenames))[selsce(popdynscenarios,scenames) %in% input$sel.sce2],
-  #               explicit_pops = input$sel.pop,
-  #               sum_all = input$sel.sum.szgroups)
-  # }, height = function() {((length(input$sel.pop) + 1) %/% 2 ) * 300 })
-
-  # output$annualIndicPlot <- renderPlot({
-  #   req(input$sel.pop, input$sel.sce2, input$sel.indic)
-  #   plot_annualindic(sces = input$sel.sce2,
-  #                scenarios_names = names(selsce(popdynscenarios,scenames))[selsce(popdynscenarios,scenames) %in% input$sel.sce2],
-  #               explicit_pops = input$sel.pop,
-  #               indic = input$sel.indic)
-  # }, height = function() {length(input$sel.indic) * 150 + 150 })
-
-
-  # output$barplot_landis_perpop <- renderPlot({
-  #   #warningPlot("Not implemented yet")
-  #   barplotTotLandingsPerSce(general=general,type_of_column="pop", selected="_all_",selected_scenarios = input$sel.sce2, scenarios_names = names(selsce(popdynscenarios,scenames))[selsce(popdynscenarios,scenames)%in%input$sel.sce2],selected_pops = sub("pop.", "", input$sel.pop), firsty="2010", lasty="2012")
-  # })
-
-  output$cumulativeMaps <- renderPlotly({
-
-  })
+      output$indicatorPlot <- renderPlot({
+        
+        scenamesSel = input$indic.sce
+        popVect=input$indic.pop
+        facet=input$indic.facet
+        if("All"%in%popVect) popVect = 0:(general$nbpops-1)
+        Whichscenames=which(scenamesSel%in%popdynscenarios)
+        
+        plot2render=indicatorsPlot(annualIndicatorsList, popVect,stockNames,scenamesSel[Whichscenames],facet)
+        
+        return(plot2render)
+      })
+      
+      # output$catchTimeSeriesPlot <- renderPlot({
+      #   ## ColorBrewer: paired
+      #   ##cols <- c("#a6cee3","#1f78b4","#b2df8a","#33a02c","#fb9a99","#e31a1c","#fdbf6f","#ff7f00","#cab2d6","#6a3d9a")
+      #   ## ColorBrewer: set3
+      #   ##cols <- c("#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd")
+      #   cols <-  c('#7FC97F','#BEAED4','#FDC086','#FFFF99','#386CB0','#F0027F','#BF5B17','#666666','#1B9E77','#D95F02','#7570B3',
+      #              '#E7298A','#66A61E','#E6AB02','#A6761D','#666666','#A6CEE3','#1F78B4','#B2DF8A','#33A02C','#FB9A99','#E31A1C',
+      #              '#FDBF6F','#FF7F00','#CAB2D6','#6A3D9A','#FFFF99','#B15928','#FBB4AE','#B3CDE3','#CCEBC5','#DECBE4','#FED9A6',
+      #              '#FFFFCC','#E5D8BD','#FDDAEC','#F2F2F2','#B3E2CD','#FDCDAC','#CBD5E8','#F4CAE4','#E6F5C9','#FFF2AE','#F1E2CC',
+      #              '#CCCCCC','#E41A1C','#377EB8','#4DAF4A','#984EA3','#FF7F00','#FFFF33','#A65628','#F781BF','#999999','#66C2A5',
+      #              '#FC8D62','#8DA0CB','#E78AC3','#A6D854','#FFD92F','#E5C494','#B3B3B3','#8DD3C7','#FFFFB3','#BEBADA','#FB8072',
+      #              '#80B1D3','#FDB462','#B3DE69','#FCCDE5','#D9D9D9','#BC80BD','#CCEBC5','#FFED6F')
+      #   par(mar = c(6,4,3.5,0.9), xpd = TRUE)
+      #   #onesim <- lst_loglike_agg_weight_all_scebaseline[[1]]
+      #   add <- FALSE
+      #   for (s in input$sel.sce2) {
+      #     onesim <- get(paste0("lst_loglike_agg_weight_all_", s))[[1]]
+      #     onesim <- onesim[onesim$year.month != "NA.NA", ]
+      #     ym <- ym2date(onesim$year.month)
+      #     nms <- names(onesim)
+      #     selected <- onesim[, nms %in% input$sel.pop, drop = FALSE] / 1000
+      #     maxima <- apply(selected, 2, max)
+      #     limits <- c(0, 10, 100, 1000, Inf)
+      #     labels <- paste("Max catches: ", paste(limits[-5], limits[-1], sep = "-"), "tonnes")
+      #     labels[length(labels)] <- "Max catches: > 1000 tonnes"
+      #     lvls <- droplevels(cut(maxima, limits, include.lowest = TRUE,
+      #                            labels = labels))
+      #     switch(length(levels(lvls)),
+      #            "1" = par(mfrow = c(1,1)),
+      #            "2" = par(mfrow = c(2,1)),
+      #            "3" = par(mfrow = c(2,2)),
+      #            "4" = par(mfrow = c(2,2)))
+      #     for (l in levels(lvls)) {
+      #       pops <- selected[, lvls == l, drop = FALSE]
+      #       nms <- as.vector(sapply(names(pops), function(x) popnames$spp[paste0("pop.", popnames$idx) == x]))
+      #       cls <- cols[as.integer(sub("pop.", "", names(pops))) + 1]
+      #       matplot(ym, pops,
+      #               type = "l", ylab = "Catch (tonnes)", xlab = "", add = add, lty = 1, lwd = 3,
+      #               col = cls)
+      #       mtext(l, line = 0.5, cex = 1.3)
+      #       legend("bottomleft", bty = "n", legend = nms, col = cls, inset = c(0, -0.8),
+      #              lty = 1, seg.len = 1, lwd = 3, box.col = "#00000022", ncol = 3, cex = 0.8)
+      #     }
+      #   }
+      # })
+      
+      #   output$fleetIndicatorsPlot <- renderPlot({
+      #     ## par(mar = c(6,4,3.5,0.9), xpd = TRUE)
+      #     
+      #     selOutcome=substr(selected,1,str_length(selected)-1)
+      #     outcomes <- get(paste0("relative_to_baseline_sce", selOutcome))
+      #     ## CAUTION: (not the same levels when reading or when using directly the obj in the env)
+      #     # levels(outcomes$scenario) <-  c("sceavchok","sceavchokpszpctrastopifchok",
+      #     #                                "sceavchokpszpectra",
+      #     #                                "sceavhtariffspszpctratariffs",   "scebaseline",
+      #     #                                "scesizespectrastopifchok", "scetrgthtariffspszpctratariffs")
+      # 
+      # 
+      #     # add baseline at 0,0,0, etc.
+      #     baseline <- outcomes[outcomes$scenario == outcomes$scenario[1],]  # init
+      #     baseline$ratio_percent <-0
+      #     baseline$scenario <- "baseline"
+      #     outcomes <- rbind.data.frame(baseline, outcomes)
+      #     outcomes$scenario <- factor(outcomes$scenario)
+      # 
+      #     selected_variables <- c("feffort", "seffort", "nbtrip", "av_trip_duration", "fishing_based_cpue_explicit","totland_explicit","sweptarea", "npv", "av_vpuf_month", "hoover")
+      #     outcomes           <- outcomes[outcomes$variable %in% selected_variables,]
+      # 
+      #     outcomes$variable <- factor(outcomes$variable)
+      #     outcomes$variable <- factor(outcomes$variable, levels=selected_variables, labels= c( "F. effort", "S. effort", "Nb. of trips","Trip duration",  "CPUE at fishing","Tot landings","Swept Area","NPV", "VPUF", "Income inequality"))
+      # 
+      #     
+      #     selected_scenarios <- input$sel.sce2
+      #     nms <- names(selsce(popdynscenarios,scenames))[selsce(popdynscenarios,scenames) == input$sel.sce2]
+      # 
+      #     outcomes <- outcomes[outcomes$scenario %in% selected_scenarios,]
+      #     #outcomes$scenario <- factor(outcomes$scenario)
+      #     outcomes$scenario <- factor(outcomes$scenario, levels=selected_scenarios, labels=  nms)
+      # 
+      #     outcomes[outcomes$ratio_percent< -25, "ratio_percent"] <- -25
+      #     outcomes[outcomes$ratio_percent>25, "ratio_percent"] <- 25
+      #     p <- ggplot(outcomes[outcomes$ratio_percent>=-25 & outcomes$ratio_percent<=25,], aes(factor(variable), ratio_percent))  + geom_boxplot(outlier.shape=NA)  +
+      #              labs(x = "Indicators", y = "% ratio over the baseline") # + ylim(-20, 20)
+      # 
+      #     p + facet_wrap( ~ scenario, ncol=2, scales="free_y")    + theme_bw() +
+      #        theme(axis.text.x = element_text(angle = 45, hjust = 1), strip.text.x =element_text(size =10),  panel.grid.major = element_line(colour = grey(0.4),linetype =3 ),
+      #              strip.background = element_blank(),
+      #              panel.border = element_rect(colour = "black"))  +
+      #        geom_abline(intercept=0, slope=0, color="grey", lty=2)
+      # 
+      # }, height = function() {((length(input$sel.sce2) + 1) %/% 2 ) * 300 })
+      
+      # output$populationSizePlot <- renderPlot({
+      #   req(input$sel.pop, input$sel.sce2, input$sel.sum.szgroups)
+      #   plot_popdyn(sces = input$sel.sce2,
+      #               scenarios_names= names(selsce(popdynscenarios,scenames))[selsce(popdynscenarios,scenames) %in% input$sel.sce2],
+      #               explicit_pops = input$sel.pop,
+      #               sum_all = input$sel.sum.szgroups)
+      # }, height = function() {((length(input$sel.pop) + 1) %/% 2 ) * 300 })
+      
+      # output$annualIndicPlot <- renderPlot({
+      #   req(input$sel.pop, input$sel.sce2, input$sel.indic)
+      #   plot_annualindic(sces = input$sel.sce2,
+      #                scenarios_names = names(selsce(popdynscenarios,scenames))[selsce(popdynscenarios,scenames) %in% input$sel.sce2],
+      #               explicit_pops = input$sel.pop,
+      #               indic = input$sel.indic)
+      # }, height = function() {length(input$sel.indic) * 150 + 150 })
+      
+      
+      # output$barplot_landis_perpop <- renderPlot({
+      #   #warningPlot("Not implemented yet")
+      #   barplotTotLandingsPerSce(general=general,type_of_column="pop", selected="_all_",selected_scenarios = input$sel.sce2, scenarios_names = names(selsce(popdynscenarios,scenames))[selsce(popdynscenarios,scenames)%in%input$sel.sce2],selected_pops = sub("pop.", "", input$sel.pop), firsty="2010", lasty="2012")
+      # })
+      
+      output$cumulativeMaps <- renderPlotly({
+        
+      })
 }
 
 shinyApp(ui = ui, server = server, options = list("shiny.autoload.r" = FALSE))

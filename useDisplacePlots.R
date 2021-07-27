@@ -8,7 +8,6 @@
 # R version......................: R version 3.6.0 (2019-04-26)
 #----------------------------------------------------------------
 
-rm(list=ls())
 library(broom)
 library(gifski)
 library(raster)
@@ -25,7 +24,7 @@ library(viridis) # colour-blind friendly palettes
 displaceplotLib="D:/work/Displace/displaceplot/R"
 for (fileName in list.files(displaceplotLib)) source(paste(displaceplotLib,fileName,sep="/"))
 shinyLib="D:/work/Displace/DISPLACE_RShiny_plots/R-scripts"
-for (fileName in list.files(shinyLib,pattern=".R")[-c(10,12,13)]) source(paste(shinyLib,fileName,sep="/")) # Issue with "makeStudyAreaMap.R" 
+for (fileName in list.files(shinyLib,pattern=".R")[-c(11,13,14)]) source(paste(shinyLib,fileName,sep="/")) # Issue with "makeStudyAreaMap.R" 
 1
 for (fileName in list.files(paste(shinyLib,"/fromFrancois"),pattern=".R")) source(paste(paste(shinyLib,"/fromFrancois"),fileName,sep="/"))
 
@@ -46,7 +45,7 @@ general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displa
                                       nbPops=27,
                                       nbSzgroup=14,
                                       #theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
-                                      theScenarios= c("baseline0","baseline1"),
+                                      theScenarios= c("baseline0","baseline1","baseline2","baseline2_10timeslower","baseline2_0times","baseline3","baseline4"),
                                       #nbSimus=20,
                                       nbSimus=1,
                                       useSQLite=FALSE)
@@ -136,7 +135,7 @@ getSimusOutcomes(general,a_baseline="baseline0",explicit_pops=0:26,selected="_me
 #Does a bar plot on the previously derived indicators
 #This call is equivalent to boxplotAggLoglikeFilesIndicators.R, making it deprectaed
 #doOutcomesbarPlot(selected="all",selected_variables = c("feffort", "seffort", "nbtrip", "av_trip_duration", "fishing_based_cpue_explicit", "totland_explicit", "sweptarea", "npv", "av_vpuf_month", "hoover"),selected_scenarios= c("baseline","calib_multipliers_SCE_"))
-doOutcomesbarPlot(selected="all",selected_variables = c("feffort", "seffort", "nbtrip", "av_trip_duration", "fishing_based_cpue_explicit", "totland_explicit", "sweptarea", "npv", "av_vpuf_month", "hoover"),selected_scenarios= c("baseline0","baseline1"))
+doOutcomesbarPlot(selected="all",selected_variables = c("feffort", "seffort", "nbtrip", "av_trip_duration", "fishing_based_cpue_explicit", "totland_explicit", "sweptarea", "npv", "av_vpuf_month", "hoover"),selected_scenarios= general$namefolderoutput)
 
 
 ##################
@@ -147,7 +146,7 @@ doOutcomesbarPlot(selected="all",selected_variables = c("feffort", "seffort", "n
 
 # Catch in Pop Values. Any difference with log like (= non explicit?) If so, I could track what I want.
 for(sce in general$namefolderoutput){
-  myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
+  if(calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
   if(! calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[[which(general$namefolderoutput==sce)]],"_out.db",sep=""))
   dbListTables(myConn)
   
@@ -220,35 +219,35 @@ for(sce in general$namefolderoutput){
   
   save(polygonsRTI,polygonsICES,RTIrectangle,icesquarterrectangle,effortPertrip,file=paste(general$main.path,general$case_study,sce,"output/forEffortPlots.Rdata",sep="/"))
   
-  for(numMet in c(NA,unique(polygonsRTI$metierId))){
-    getmapEffortRTIAll(polygonsRTI,monthNum=NA,idMetier=numMet,gif=T,sce)
-    getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=T,sce)
-    getmapEffortNodeAll(effortPertrip,monthNum=NA,idMetier=numMet,gif=T,sce)
-  }
-  for(numMet in c(NA,unique(polygonsRTI$metierId))){
-    if(!is.na(numMet)){
-      png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_RTIcell_AllTime_",numMet,".png",sep=""),height=800,width=800,units="px",res=100)
-      print(getmapEffortRTIAll(polygonsRTI,monthNum=NA,idMetier=numMet,gif=F,sce))
-      dev.off()
-      png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_ICEScell_AllTime_",numMet,".png",sep=""),height=800,width=800,units="px",res=100)
-      print(getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=F,sce))
-      dev.off()
-      png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_AllTime_",numMet,".png",sep=""),height=800,width=800,units="px",res=100)
-      print(getmapEffortNodeAll(effortPertrip,monthNum=NA,idMetier=numMet,gif=F,sce))
-      dev.off()
-    }
-    if(is.na(numMet)){
-      png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_RTIcell_AllAll.png",sep=""),height=800,width=800,units="px",res=100)
-      print(getmapEffortRTIAll(polygonsRTI,monthNum=NA,idMetier=numMet,gif=F,sce))
-      dev.off()
-      png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_ICEScell_AllAll.png",sep=""),height=800,width=800,units="px",res=100)
-      print(getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=F,sce))
-      dev.off()
-      png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_AllAll.png",sep=""),height=800,width=800,units="px",res=100)
-      print(getmapEffortNodeAll(effortPertrip,monthNum=NA,idMetier=numMet,gif=F,sce))
-      dev.off()
-    }
-  }
+  # for(numMet in c(NA,unique(polygonsRTI$metierId))){
+  #   getmapEffortRTIAll(polygonsRTI,monthNum=NA,idMetier=numMet,gif=T,sce)
+  #   getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=T,sce)
+  #   getmapEffortNodeAll(effortPertrip,monthNum=NA,idMetier=numMet,gif=T,sce)
+  # }
+  # for(numMet in c(NA,unique(polygonsRTI$metierId))){
+  #   if(!is.na(numMet)){
+  #     png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_RTIcell_AllTime_",numMet,".png",sep=""),height=800,width=800,units="px",res=100)
+  #     print(getmapEffortRTIAll(polygonsRTI,monthNum=NA,idMetier=numMet,gif=F,sce))
+  #     dev.off()
+  #     png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_ICEScell_AllTime_",numMet,".png",sep=""),height=800,width=800,units="px",res=100)
+  #     print(getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=F,sce))
+  #     dev.off()
+  #     png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_AllTime_",numMet,".png",sep=""),height=800,width=800,units="px",res=100)
+  #     print(getmapEffortNodeAll(effortPertrip,monthNum=NA,idMetier=numMet,gif=F,sce))
+  #     dev.off()
+  #   }
+  #   if(is.na(numMet)){
+  #     png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_RTIcell_AllAll.png",sep=""),height=800,width=800,units="px",res=100)
+  #     print(getmapEffortRTIAll(polygonsRTI,monthNum=NA,idMetier=numMet,gif=F,sce))
+  #     dev.off()
+  #     png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_ICEScell_AllAll.png",sep=""),height=800,width=800,units="px",res=100)
+  #     print(getmapEffortICESAll(polygonsICES,monthNum=NA,idMetier=numMet,gif=F,sce))
+  #     dev.off()
+  #     png(filename=paste(paste(general$main.path,general$case_study,sce,"output",sep="/"),"/effort_AllAll.png",sep=""),height=800,width=800,units="px",res=100)
+  #     print(getmapEffortNodeAll(effortPertrip,monthNum=NA,idMetier=numMet,gif=F,sce))
+  #     dev.off()
+  #   }
+  # }
 }
 
 ##################
@@ -302,9 +301,7 @@ for(sce in general$namefolderoutput){
       mutate(TotalW=TotalW/sum(TotalW)) %>% 
       ungroup() %>% 
       mutate(TotalW=replace(TotalW,TotalW<10^(-15),0)) %>% # Considered equal to 0 if biomass distribution is too low in some cells
-      merge(nodes2merge, by=c("NodeId"))
-    
-    interimMap = interimMap %>% 
+      merge(nodes2merge, by=c("NodeId"))%>% 
       mutate(TStep=as.factor(TStep))
     
     levels(interimMap$TStep)=0:(length(levels(interimMap$TStep))-1)
@@ -327,21 +324,22 @@ for(sce in general$namefolderoutput){
       rename(Long=x,Lat=y)
     
     #save(interimMap,PopValues,PopDyn,interim,RTIrectangle,icesquarterrectangle,file=paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))
-    save(PopDyn,interimMap,interimMapRTI,interimMapICES,interim,RTIrectangle,icesquarterrectangle,file=paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))
+    #save(PopDyn,interimMap,interimMapRTI,interimMapICES,interim,RTIrectangle,icesquarterrectangle,file=paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))
+    save(PopDyn,interimMapRTI,interimMapICES,interim,RTIrectangle,icesquarterrectangle,file=paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))
     
   }
   
-  if(file.exists(paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))){
-    load(paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))
-  }
-  
-  # LOOP ON POPS DO ONE GIF PER AGG SCALE
-  for(numPop in sort(unique(interimMap$PopId))){
-    getBiomassMapNode(interimMap,popNum=numPop,timeStep=NA,gif=T,scename=sce,scale="Node")
-    getBiomassMapNode(interimMapRTI,popNum=numPop,timeStep=NA,gif=T,scename=sce,scale="RTI rectangle")
-    getBiomassMapNode(interimMapICES,popNum=numPop,timeStep=NA,gif=T,scename=sce,scale="ICES rectangle")
-  }
-  
+  # if(file.exists(paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))){
+  #   load(paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))
+  # }
+  # 
+  # # LOOP ON POPS DO ONE GIF PER AGG SCALE
+  # for(numPop in sort(unique(interimMap$PopId))){
+  #   getBiomassMapNode(interimMap,popNum=numPop,timeStep=NA,gif=T,scename=sce,scale="Node")
+  #   getBiomassMapNode(interimMapRTI,popNum=numPop,timeStep=NA,gif=T,scename=sce,scale="RTI rectangle")
+  #   getBiomassMapNode(interimMapICES,popNum=numPop,timeStep=NA,gif=T,scename=sce,scale="ICES rectangle")
+  # }
+  # 
 }
 
 ##################
@@ -351,7 +349,8 @@ for(sce in general$namefolderoutput){
 ##################
 
 for(sce in general$namefolderoutput){
-  
+  startTime=Sys.time()
+  a=Sys.time()
   myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
   if(! calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[[which(general$namefolderoutput==sce)]],"_out.db",sep=""))
   dbListTables(myConn)
@@ -365,6 +364,27 @@ for(sce in general$namefolderoutput){
   
   dbDisconnect(myConn)
   
+  # aaa = PopValues %>%
+  #   group_by(TStep,PopId,NodeId) %>% # Eliminate duplicates rows at last time step
+  #   filter(row_number() == 1) %>%
+  #   group_by(TStep) %>%
+  #   summarize(CumCatches=sum(CumCatches)) %>%
+  #   arrange(TStep) %>%
+  #   mutate(Catches=CumCatches) %>%
+  #   mutate(Catches = replace(Catches,TStep!=0,diff(Catches)))
+  # 
+  # #Catch happens only in Jan 2010
+  # 
+  # bbb = VesselLogLikeCatches %>%
+  #   mutate(Catches!=0 | Discards!=0) %>%
+  #   select(LoglikeId) %>%
+  #   unique()
+  # 
+  # range(VesselLogLike$TStepDep[VesselLogLike$RowId %in% bbb$LoglikeId])
+  # range(VesselLogLike$TStep)
+  # 
+  # # Vessels go fishing only in the first 712 first hours of the simulation (first month only, 1-2 day(s) before Jan ends) according to recrods...
+  # # # Recording stops at hour 1603
   
   months = data.frame(TStep = sort(unique(NodesStat$TStep)), month= 1:length(sort(unique(NodesStat$TStep))))
   months = data.frame(TStep = c(sort(unique(NodesStat$TStep)),(max(NodesStat$TStep)+100)), month= c(1:length(sort(unique(NodesStat$TStep))),length(sort(unique(NodesStat$TStep))))) # Adding one more row to avoid crashes
@@ -449,10 +469,13 @@ for(sce in general$namefolderoutput){
   #b=Sys.time()
   #b-a
   
-  a=Sys.time()
-  implicitCatchSpatial = getImplicitCatchSpatial(PopValues,explicitCatchSpatial,nodes2merge)# WARNING: ONLY 2010 IMPLICIT CATCH IS PROPERLY DERIVED AT THAT SCALE DUE TO DISPLACE   HARDCODING ON VMSLIKE TABLE; 6 mins for 3 years
-  b=Sys.time()
-  b-a
+  #a=Sys.time()
+  #implicitCatchSpatial = getImplicitCatchSpatial(PopValues,explicitCatchSpatial,nodes2merge)# WARNING: ONLY 2010 IMPLICIT CATCH IS PROPERLY DERIVED AT THAT SCALE DUE TO DISPLACE   HARDCODING ON VMSLIKE TABLE; 6 mins for 3 years
+  implicitCatchSpatialICES = getImplicitCatchSpatialFast(PopValues,NodesDef,explicitCatchSpatial,nodes2merge,scale="ICES")
+  implicitCatchSpatialRTI = getImplicitCatchSpatialFast(PopValues,NodesDef,explicitCatchSpatial,nodes2merge,scale="RTI")
+  
+  # b=Sys.time()
+  # b-a
   
   #a=Sys.time() # 40secs
   explicitCatchFortnight = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,fortnights,nodes2merge,"fortnight") 
@@ -478,35 +501,35 @@ for(sce in general$namefolderoutput){
     rename(layer=rtirectangle) %>%
     merge(RTIrectangle,by=c("layer"))
   
-  implicitCatchSpatialICES = implicitCatchSpatial %>%
+  implicitCatchSpatialICES = implicitCatchSpatialICES %>%
     group_by(PopId,month,icesrectanglecode,year,Fraction) %>%
     summarize(value=sum(value)) %>%
     rename(layer=icesrectanglecode) %>%
     merge(icesquarterrectangle,by=c("layer"))
   
-  implicitCatchSpatialRTI = implicitCatchSpatial %>%
+  implicitCatchSpatialRTI = implicitCatchSpatialRTI %>%
     group_by(PopId,month,rtirectangle,year,Fraction) %>%
     summarize(value=sum(value)) %>%
     rename(layer=rtirectangle) %>%
     merge(RTIrectangle,by=c("layer"))
   
-  #a=Sys.time() # 10 mis for that single step!
-  allCatchSpatial = explicitCatchSpatial %>%
-    mutate(year=year-min(year)) %>%
-    select(-c(metierId)) %>%
-    bind_rows(implicitCatchSpatial)
-  
-  interimDerivationChunk = function(data2process){
-    data2process = data2process %>%
-      group_by(PopId,month,NodeId,icesrectanglecode,rtirectangle,Long,Lat,year,Fraction) %>%
-      summarize(value=sum(value,na.rm=T)) %>%
-      ungroup()
-    return(data2process)
-  }
-  allCatchSpatial = lapply(sort(unique(allCatchSpatial$month)), function(x) interimDerivationChunk(subset(allCatchSpatial, month==x)))
-  allCatchSpatial=plyr::ldply(allCatchSpatial)
-  # b=Sys.time()
-  # b-a
+  # #a=Sys.time() # 10 mis for that single step!
+  # allCatchSpatial = explicitCatchSpatial %>%
+  #   mutate(year=year-min(year)) %>%
+  #   select(-c(metierId)) %>%
+  #   bind_rows(implicitCatchSpatial)
+  # 
+  # interimDerivationChunk = function(data2process){
+  #   data2process = data2process %>%
+  #     group_by(PopId,month,NodeId,icesrectanglecode,rtirectangle,Long,Lat,year,Fraction) %>%
+  #     summarize(value=sum(value,na.rm=T)) %>%
+  #     ungroup()
+  #   return(data2process)
+  # }
+  # allCatchSpatial = lapply(sort(unique(allCatchSpatial$month)), function(x) interimDerivationChunk(subset(allCatchSpatial, month==x)))
+  # allCatchSpatial=plyr::ldply(allCatchSpatial)
+  # # b=Sys.time()
+  # # b-a
   
   allCatchSpatialICES = explicitCatchSpatialICES %>%
     mutate(year=year-min(year)) %>%
@@ -532,9 +555,14 @@ for(sce in general$namefolderoutput){
   allCatchSpatialRTI=plyr::ldply(allCatchSpatialRTI)
   
   save(explicitCatch,explicitCatchFortnight,explicitCatchSpatial,explicitCatchSpatialFortnight,explicitCatchSpatialICES,explicitCatchSpatialRTI,explicitCatchSpatialRTIFortnight,file=paste(general$main.path,general$case_study,sce,"output/forExplicitCatchsPlots.Rdata",sep="/"))
-  save(implicitCatch,implicitCatchSpatial,implicitCatchSpatialICES,implicitCatchSpatialRTI,file=paste(general$main.path,general$case_study,sce,"output/forImplicitCatchsPlots.Rdata",sep="/"))
-  save(allCatchSpatialRTI,allCatchSpatialICES,allCatchSpatial,file=paste(general$main.path,general$case_study,sce,"output/forAllCatchsPlots.Rdata",sep="/"))
-  
+  #save(implicitCatch,implicitCatchSpatial,implicitCatchSpatialICES,implicitCatchSpatialRTI,file=paste(general$main.path,general$case_study,sce,"output/forImplicitCatchsPlots.Rdata",sep="/"))
+  save(implicitCatch,implicitCatchSpatialICES,implicitCatchSpatialRTI,file=paste(general$main.path,general$case_study,sce,"output/forImplicitCatchsPlots.Rdata",sep="/"))
+  #save(allCatchSpatialRTI,allCatchSpatialICES,allCatchSpatial,file=paste(general$main.path,general$case_study,sce,"output/forAllCatchsPlots.Rdata",sep="/"))
+  save(allCatchSpatialRTI,allCatchSpatialICES,file=paste(general$main.path,general$case_study,sce,"output/forAllCatchsPlots.Rdata",sep="/"))
+  b=Sys.time()
+  print(b-a)
+  endTime=Sys.time()
+  print(endTime-startTime)
 }
 
 ##################
@@ -680,4 +708,66 @@ for(sce in general$namefolderoutput){
     mutate(variable=fct_recode(variable,"F/Finit"="Fbar","TLand/TLandinit"="totland_kg","TDisc/TDiscinit"="totdisc_kg","SSB/SSBinit"="SSB_kg","Tac/Tacinit" ="tac"))
   
   save(annualIndicators,file=paste(general$main.path,general$case_study,sce,"output/forAnnualIndicatorsPlots.Rdata",sep="/"))
+}
+
+
+##################
+###
+###RTI MAPS
+###
+##################
+
+for(sce in general$namefolderoutput){
+  if(calib){
+    RTImaps = read_lines(paste(general$main.path,"/",general$case_study,"/",sce,"/popnodes_tariffs_",length(general$namesimu[2][[1]]),".dat",sep=""))
+    if(length(RTImaps)>0){
+      RTImaps = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popnodes_tariffs_",length(general$namesimu[2][[1]]),".dat",sep=""))
+    }
+  }
+  if(!calib){
+    RTImaps = read_lines(paste(general$main.path,"/",general$case_study,"/",sce,"/popnodes_tariffs_simu1.dat",sep=""))
+    if(length(RTImaps)>0){
+      RTImaps = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popnodes_tariffs_simu1.dat",sep=""))
+    }
+  }
+  if(length(RTImaps)>0){
+    
+    icesquarterrectangle=raster(xmn=-13, xmx=-4, ymn=47.5, ymx=57, crs=CRS("+proj=longlat +datum=WGS84"), resolution=c(0.5,0.25)) # Create a raster bigger than necessary; encompass all the harbours!
+    #values will be their ICES name. Main rectangle: ususal name. Quarter name : 1 upper left, 2 upper right, 3 lower left, 4 lower right
+    xcoord=47:55 #D is replaced by 4; E is replaced by 5 since DISPLACE needs integers, hence are D7 to E5
+    ycoord=seq(42,24,-1)
+    icesNames=matrix(rep(paste(rep(ycoord, each=length(xcoord)),rep(xcoord,times=length(ycoord)),sep=""),each=2),ncol=length(ycoord))
+    icesNames=icesNames[,rep(1:ncol(icesNames), each = 2) ]
+    icesNames=paste(icesNames, rep(c(rep(c(1,2),times=length(xcoord)),rep(c(3,4),times=length(xcoord))),times=length(ycoord)),sep="")
+    icesNames=matrix(icesNames,ncol=2*length(ycoord))
+    icesNames=as.numeric(icesNames)
+    RTIrectangle=setValues(icesquarterrectangle, icesNames)
+    RTIrectangle=as.data.frame(RTIrectangle,xy=T)
+    
+    if(calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
+    if(! calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[[which(general$namefolderoutput==sce)]],"_out.db",sep=""))
+    dbListTables(myConn)
+    
+    NodesDef = dbGetQuery(myConn,"SELECT * FROM NodesDef") %>%  # Get nodes coordinates, ICES rectangle and RTI rectangle (all coded in icesrectanglecode)
+      filter(NodeName=="at_sea")
+    dbDisconnect(myConn)
+    
+    names(RTImaps)=c("TStep","NodeId","Long","Lat",seq(0:(dim(RTImaps)[2]-5))) # one tariff per metier
+    RTImaps = RTImaps %>% 
+      merge(months, by=c("TStep")) %>% 
+      merge(subset(NodesDef, select=c(NodeId,icesrectanglecode)), by=c("NodeId")) %>% 
+      select(-c("Long","Lat","NodeId","TStep")) %>% 
+      melt(id.vars=c("month","icesrectanglecode")) %>% 
+      rename(layer=icesrectanglecode) %>% 
+      group_by(month,layer,variable) %>% 
+      summarize(value=mean(value)) %>% # TO BE CHANGED ONCE FRANCOIS ALTERS HIS CODE, AS IT SHOULD BE UNIQUE, NOT MEAN
+      ungroup() %>% 
+      merge(RTIrectangle, by=c("layer"))
+    levels(RTImaps$variable)=metierNames$name
+    
+  
+  }else{
+    RTImaps=NULL
+  }
+  save(RTImaps,file=paste(general$main.path,general$case_study,sce,"output/forRTITariffsPlots.Rdata",sep="/"))
 }
