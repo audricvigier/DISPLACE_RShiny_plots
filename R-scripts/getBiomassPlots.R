@@ -143,8 +143,8 @@ getAbundancePlot = function(interim,stockNames,biomassObs){
 # Create an interim dataset to reduce computation time
 getInterim = function(PopValues){
   interim = PopValues %>% 
-    group_by(TStep,PopId,NodeId) %>% # Eliminate duplicates rows at last time step
-    filter(row_number() == 1)
+      arrange(NodeId,PopId,TStep,TotalN,TotalW,CumCatches,CumDiscards) %>% # Eliminate duplicate rows at last time step, putting the minimal value (the one being kept next step) first
+      distinct(NodeId,PopId,TStep,.keep_all=T)
   
   return(interim)
 }

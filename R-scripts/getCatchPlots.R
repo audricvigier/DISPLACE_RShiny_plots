@@ -254,11 +254,10 @@ getImplicitCatch = function(PopValues,explicitCatch){
     as.data.frame() %>% 
     reshape2::dcast(.,PopId+month+year~Fraction,value.var="value")
   
-  # 1'30" for 3 years, unavoidable
+  # timing unknown
   ImplicitCatch = PopValues %>% 
-    group_by(TStep,PopId,NodeId) %>% # Eliminate duplicates rows at last time step
-    filter(row_number() == 1) %>% 
-    ungroup()
+    arrange(NodeId,PopId,TStep,TotalN,TotalW,CumCatches,CumDiscards) %>% # Eliminate duplicate rows at last time step, putting the minimal value (the one being kept next step) first
+    distinct(NodeId,PopId,TStep,.keep_all=T)
   
   # 1.3sec for 3 years
   ImplicitCatch = ImplicitCatch %>% 
