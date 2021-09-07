@@ -28,7 +28,8 @@ general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displa
                                       nbSzgroup=14,
                                       # theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
                                       # nbSimus=20,
-                                      theScenarios= paste("baseline",0:4,sep=""),
+                                      #theScenarios= paste("baseline",0:4,sep=""),
+                                      theScenarios= c("baseline0Selected","baseline1Selected"),
                                       nbSimus=1,
                                       useSQLite=FALSE)
 
@@ -61,11 +62,12 @@ popdynfns <- dir(outputLocation, "popdyn.*RData", full.names = TRUE)
 popdynfns = popdynfns[as.numeric(unlist(sapply(general$namefolderoutput, function(x) grep(x,popdynfns))))]
 popdynscenarios <- unique(gsub("^.*popdyn_|[.]RData", "", popdynfns))
 # scenames=c("Multipliers","Multipliers SCE")
-scenames=c("TAC","TAC + LO","Effort limitation","RTI no update","RTI with update")
+# scenames=c("TAC","TAC + LO","Effort limitation","RTI no update","RTI with update")
+scenames=c("TAC","TAC + LO")
 what2="weight"
 selected="_all_"
 # a_baseline="calib_multipliers_"
-a_baseline="baseline0"
+a_baseline="baseline0Selected"
 
 getStockNames = function(){
   codes=read.table(file=paste(general$main.path.ibm, "/pop_names_CelticSea.txt",sep=""),header=T)
@@ -85,12 +87,14 @@ stockNames = getStockNames() %>%
   arrange(PopId)
 metierNames = getMetierNames() %>% 
   arrange(metierId)
+
 getMonths = function(){
-  months=read.table(file=paste(general$main.path.ibm, "/simusspe_CelticSea/tstep_months_2010_2020.dat",sep=""),header=F) %>%
+  months=read.table(file=paste(general$main.path.ibm, "/simusspe_CelticSea/tstep_months.dat",sep=""),header=F) %>%
     rename(TStep=V1) %>%
     mutate(month=1:n())# Hours give the end of the month
 }
 months=getMonths()
+months$TStep[months$month==132]=96433
 
 # annualindicfns <- dir(outputLocation, "lst_annualindic.*RData", full.names = TRUE)
 # annualindicscenarios <- gsub("^.*lst_annualindic_|[.]RData", "", popdynfns)

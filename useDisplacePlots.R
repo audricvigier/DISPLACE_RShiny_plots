@@ -122,7 +122,7 @@ getAggLoglikeFiles(general,explicit_pops=0:26,implicit_pops=NULL,what="CPUE")
 
 #N IN THOUSANDS per group, time step and pop. No spatial dimension. Also does some plots. WHATEVER THESE PLOTS are supposed to be, redo them with tidyverse. (an SSB plot I've done better (check though); N per size class pop and month (redo with tidyverse)). ALso throws an error because legends are poorly managed.
 #getAggPoplikeFiles(general=general,explicit_pops=0:26,the_baseline ="calib_multipliers_")
-getAggPoplikeFiles(general=general,explicit_pops=0:26,the_baseline ="baseline0")
+getAggPoplikeFiles(general=general,explicit_pops=0:26,the_baseline ="baseline0Selected")
 
 #Produce average spatial layers over simulations, at a specific time step. Generates a text file with the average layer. How may should I generate (time step, type ?)
 #a_type : anything in that list cumcatches cumcatches_with_threshold cumdiscards cumdiscardsratio cumftime cumsweptarea cumulcatches end inc impact impact_per_szgroup nbchoked start.
@@ -138,7 +138,7 @@ getAggNodeBenthosLayerFiles(general,  a_tstep="34321")
 # create metier-wise indicators TO BE DONE)
 #This call is equivalent to expressAggLoglikeFilesIndicatorsRelativeToBaselineSce.R, but better implemented
 #getSimusOutcomes(general,a_baseline="calib_multipliers_",explicit_pops=0:26,selected="_met_")
-getSimusOutcomes(general,a_baseline="baseline0",explicit_pops=0:26,selected="_met_")
+getSimusOutcomes(general,a_baseline="baseline0Selected",explicit_pops=0:26,selected="_met_")
 
 #Does a bar plot on the previously derived indicators
 #This call is equivalent to boxplotAggLoglikeFilesIndicators.R, making it deprectaed
@@ -396,6 +396,14 @@ for(sce in general$namefolderoutput){
 ###
 ##################
 
+keepUniqueRows = function(df2process){
+  df2process = df2process%>% 
+    arrange(NodeId,PopId,TotalN,TotalW,CumCatches,CumDiscards) %>% # Eliminate duplicate rows at last time step, putting the minimal value (the one being kept next step) first
+    distinct(NodeId,PopId,.keep_all=T)
+  return(df2process)
+}
+
+#1 first loop to create some interim files: 7'10" for 11 years
 for(sce in general$namefolderoutput){
   startTime=Sys.time()
   a=Sys.time()
@@ -403,12 +411,12 @@ for(sce in general$namefolderoutput){
   if(! calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[[which(general$namefolderoutput==sce)]],"_out.db",sep=""))
   dbListTables(myConn)
   
-  PopValues = dbGetQuery(myConn,"SELECT * FROM PopValues") # To get Cumulated catch per population
+  #PopValues = dbGetQuery(myConn,"SELECT * FROM PopValues") # To get Cumulated catch per population
   VesselLogLike = dbGetQuery(myConn,"SELECT * FROM VesselLogLike") # time at sea for each vessel/metier/trip/harbour (NodeId is the harbour, not the fishing location) . But no fishing time?
-  VesselLogLikeCatches = dbGetQuery(myConn,"SELECT * FROM VesselLogLikeCatches")
+  #VesselLogLikeCatches = dbGetQuery(myConn,"SELECT * FROM VesselLogLikeCatches")
   VesselVmsLike = dbGetQuery(myConn,"SELECT * FROM VesselVmsLike") # State (including fishing (1), steaming (2) and harbour (3)) for each vessel/node/time step . In theory enough to get the information on effort I want, BUT it's only for 1 year (the first one).... Is it 2 hours slice I have, and not the actual effort? Ask.
   NodesDef = dbGetQuery(myConn,"SELECT * FROM NodesDef") # Get nodes coordinates, ICES rectangle and RTI rectangle (all coded in icesrectanglecode)
-  NodesStat = dbGetQuery(myConn,"SELECT * FROM NodesStat")
+  #NodesStat = dbGetQuery(myConn,"SELECT * FROM NodesStat")
   
   dbDisconnect(myConn)
   
@@ -456,7 +464,6 @@ for(sce in general$namefolderoutput){
 
   names(catchAndEffortPertrip)= c('TStepDep', 'TStep', 'reason_back','cumsteaming', 'idx_node',  'Id', 'VE_REF', 'timeatsea', 'fuelcons', 'traveled_dist',  paste('pop.', 0:(general$nbpops-1), sep=''), "freq_metiers", "revenue", "rev_from_av_prices", "rev_explicit_from_av_prices", "fuelcost", "vpuf", "gav", "gradva","sweptr", "revpersweptarea",  paste('disc_',  explicit_pops, sep=''), "GVA", "GVAPerRevenue", "LabourSurplus", "GrossProfit", "NetProfit",  "NetProfitMargin", "GVAPerFTE", "RoFTA", "BER", "CRBER", "NetPresentValue", "numTrips")   
   
-  # Up to this mark: 7 min to load the files for 11 years
   # This chunk = 2min for 11 years
   catchPertrip = catchAndEffortPertrip %>% 
     mutate(effort=TStep-TStepDep-cumsteaming) %>% # Use it for CPUE plots
@@ -504,6 +511,105 @@ for(sce in general$namefolderoutput){
     summarize(effort=sum(effort,na.rm=T),value=sum(value,na.rm=T)) %>% 
     ungroup()
   
+  save(nodes2merge,metierCorr,fishingLocations,catchPertrip,catchPertripMonth,catchPertripFortnight,file=paste(general$main.path,general$case_study,sce,"output/forExplicitCatchsInterim.Rdata",sep="/"))
+  b=Sys.time()
+  print(b-a)
+}
+
+#A second loop to create some interim files: 7'
+for(sce in general$namefolderoutput){
+  startTime=Sys.time()
+  c=Sys.time()
+  myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
+  if(! calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[[which(general$namefolderoutput==sce)]],"_out.db",sep=""))
+  dbListTables(myConn)
+  
+  PopValues = dbGetQuery(myConn,"SELECT * FROM PopValues") # To get Cumulated catch per population
+  # Conditioning PopValues for 11 years: 2'
+  a=Sys.time()
+  PopValues = PopValues %>%
+    group_by(TStep) %>% 
+    nest() %>% 
+    mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>x]))] )) %>% 
+    mutate(year=floor((month-1)/12)) %>% 
+    mutate(data=map(data,keepUniqueRows)) %>% 
+    unnest() %>% 
+    ungroup()
+  b=Sys.time()
+  
+  VesselLogLike = dbGetQuery(myConn,"SELECT * FROM VesselLogLike") # time at sea for each vessel/metier/trip/harbour (NodeId is the harbour, not the fishing location) . But no fishing time?
+  VesselLogLikeCatches = dbGetQuery(myConn,"SELECT * FROM VesselLogLikeCatches")
+  #VesselVmsLike = dbGetQuery(myConn,"SELECT * FROM VesselVmsLike") # State (including fishing (1), steaming (2) and harbour (3)) for each vessel/node/time step . In theory enough to get the information on effort I want, BUT it's only for 1 year (the first one).... Is it 2 hours slice I have, and not the actual effort? Ask.
+  NodesDef = dbGetQuery(myConn,"SELECT * FROM NodesDef") # Get nodes coordinates, ICES rectangle and RTI rectangle (all coded in icesrectanglecode)
+  #NodesStat = dbGetQuery(myConn,"SELECT * FROM NodesStat")
+  
+  dbDisconnect(myConn)
+  
+  d=Sys.time()
+  print(d-c)
+  
+  #Up to this mark, for 11 years, 6'40"
+  
+  # a=Sys.time()
+  # PopValues = PopValues %>% 
+  #   group_by(TStep) %>%  #Split PopValues into a list (one element per time step) to manipulate it more easily
+  #   group_split() %>%
+  #   map(keepUniqueRows) %>% # One operation per list item with map
+  #   ldply()
+  # b=Sys.time()
+  # b-a
+  #Load interim files
+  load(paste(general$main.path,general$case_study,sce,"output/forExplicitCatchsInterim.Rdata",sep="/"))
+
+    # 3 mins for 11 years for these 3 functions.
+  explicitCatch = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,fortnights,nodes2merge,"month") # Includes discards, 13 sec for 3 years ; 2 min for 11 years
+  explicitCatchSpatial = getExplicitCatchSpatial(catchPertripMonth,"month") # 51 sec for 11 years
+  implicitCatch = getImplicitCatch(PopValues,explicitCatchSpatial) # 7.3 sec for 11 years
+  
+  save(explicitCatch,explicitCatchSpatial,implicitCatch,PopValues,VesselLogLike,VesselLogLikeCatches,NodesDef,file=paste(general$main.path,general$case_study,sce,"output/forExplicitCatchsInterim2.Rdata",sep="/"))
+}
+
+#A third loop to create the wanted outputs. Code could be improved regarding memory usage. Time: 7'
+for(sce in general$namefolderoutput){
+  #1'6" to load files
+  startTime=Sys.time()
+  a=Sys.time()
+  #Load interim files
+  load(paste(general$main.path,general$case_study,sce,"output/forExplicitCatchsInterim.Rdata",sep="/"))
+  #Load interim files
+  load(paste(general$main.path,general$case_study,sce,"output/forExplicitCatchsInterim2.Rdata",sep="/"))
+  b=Sys.time()
+  b-a
+  
+  #Needs a big minute. 
+  ImplicitCatch = PopValues %>% # For 11 years, takes  1.30"
+    mutate(CumDiscards=CumDiscards/1000,CumCatches=CumCatches/1000) %>%  # Convert to tons
+    #group_by(TStep,PopId,NodeId) %>% # Duplicates eliminated during pre conditioning
+    #filter(row_number() == 1) %>% 
+    select(-c(TotalN,TotalW,Impact)) %>% # Convert to tons
+    #ungroup() %>%
+    group_by(NodeId) %>% 
+    nest() %>% 
+    mutate() %>% 
+    merge(subset(NodesDef, select=c(NodeId,icesrectanglecode,Long,Lat)), by=c("NodeId")) %>% 
+    rename(rtirectangle=icesrectanglecode) %>% 
+    mutate(icesrectanglecode=as.numeric(sapply(rtirectangle, function(x) substr(x,1,4)))) %>% 
+    as_tibble() 
+  
+  rm(PopValues)
+  #1'35" for the 2 next lines
+  #a=Sys.time()
+  implicitCatchSpatialICES = getImplicitCatchSpatialFast(ImplicitCatch,NodesDef,explicitCatchSpatial,nodes2merge,scale="ICES")
+  implicitCatchSpatialRTI = getImplicitCatchSpatialFast(ImplicitCatch,NodesDef,explicitCatchSpatial,nodes2merge,scale="RTI")
+  # b=Sys.time()
+  # print(b-a)
+  
+  #a=Sys.time() # 3'20" for 11 years
+  explicitCatchFortnight = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,fortnights,nodes2merge,"fortnight") 
+  explicitCatchSpatialFortnight = getExplicitCatchSpatial(catchPertripFortnight,"fortnight") # LIMITED TO ONE YEAR SO FAR BECAUSE OF DISPLACE HARD CODING
+  # b=Sys.time()
+  # print(b-a)
+  
   #Shapefiles for ICES rectangles and RTI rectangles
   ## Create shapefile VERIFIED, ALL NAMES MATCH THE GOOD RECTANGLES
   icesquarterrectangle=raster(xmn=-13, xmx=-4, ymn=47.5, ymx=57, crs=CRS("+proj=longlat +datum=WGS84"), resolution=c(0.5,0.25)) # Create a raster bigger than necessary; encompass all the harbours!
@@ -523,40 +629,6 @@ for(sce in general$namefolderoutput){
   icesNames=as.numeric(icesNames)
   icesquarterrectangle=setValues(icesquarterrectangle, icesNames)
   icesquarterrectangle=as.data.frame(icesquarterrectangle,xy=T)
-  
-  
-  a=Sys.time()
-  PopValues = PopValues %>% 
-    group_by(TStep) %>% 
-    nest() %>% 
-    mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>x]))] )) %>% 
-    mutate(year=floor((month-1)/12)) %>% 
-    unnest() %>% 
-    ungroup()
-  b=Sys.time()
-  b-a
-  
-  #a=Sys.time() # 2.82 mins for 3 years for these 3 functions.
-  explicitCatch = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,fortnights,nodes2merge,"month") # Includes discards, 13 sec for 3 years ; 2 min for 11 years
-  explicitCatchSpatial = getExplicitCatchSpatial(catchPertripMonth,"month") # 51 sec for 11 years
-  implicitCatch = getImplicitCatch(PopValues,explicitCatchSpatial) # Timing unknown, break it by year
-  # b=Sys.time()
-  # b-a
-  
-  
-  #a=Sys.time()
-  #implicitCatchSpatial = getImplicitCatchSpatial(PopValues,explicitCatchSpatial,nodes2merge)# WARNING: ONLY 2010 IMPLICIT CATCH IS PROPERLY DERIVED AT THAT SCALE DUE TO DISPLACE   HARDCODING ON VMSLIKE TABLE; 6 mins for 3 years
-  implicitCatchSpatialICES = getImplicitCatchSpatialFast(PopValues,NodesDef,explicitCatchSpatial,nodes2merge,scale="ICES")
-  implicitCatchSpatialRTI = getImplicitCatchSpatialFast(PopValues,NodesDef,explicitCatchSpatial,nodes2merge,scale="RTI")
-  
-  # b=Sys.time()
-  # b-a
-  
-  #a=Sys.time() # 40secs
-  explicitCatchFortnight = getExplicitCatch(VesselLogLike,VesselLogLikeCatches,months,fortnights,nodes2merge,"fortnight") 
-  explicitCatchSpatialFortnight = getExplicitCatchSpatial(catchPertripFortnight,"fortnight") # LIMITED TO ONE YEAR SO FAR BECAUSE OF DISPLACE HARD CODING
-  #b=Sys.time() 
-  #b-a
   
   explicitCatchSpatialICES = explicitCatchSpatial %>%
     group_by(PopId,month,metierId,icesrectanglecode,year,Fraction) %>%
@@ -634,8 +706,8 @@ for(sce in general$namefolderoutput){
   save(implicitCatch,implicitCatchSpatialICES,implicitCatchSpatialRTI,file=paste(general$main.path,general$case_study,sce,"output/forImplicitCatchsPlots.Rdata",sep="/"))
   #save(allCatchSpatialRTI,allCatchSpatialICES,allCatchSpatial,file=paste(general$main.path,general$case_study,sce,"output/forAllCatchsPlots.Rdata",sep="/"))
   save(allCatchSpatialRTI,allCatchSpatialICES,file=paste(general$main.path,general$case_study,sce,"output/forAllCatchsPlots.Rdata",sep="/"))
-  b=Sys.time()
-  print(b-a)
+  # b=Sys.time()
+  # print(b-a)
   endTime=Sys.time()
   print(endTime-startTime)
 }
