@@ -330,7 +330,7 @@ server <- function(input, output, session) {
   outVar <- reactive({
     updatedItems=list()
     updatedItems[[1]] = c("month","year")
-    updatedItems[[2]]=c("Node","ICES rectangle","RTI rectangle")
+    updatedItems[[2]]=c("RTI rectangle","Node","ICES rectangle")
     updatedItems[[3]] = c("month","year")
     #if (!input$selmap.variable%in%c("LPUE","DPUE")) updatedItems[[1]] = c("month","year")
     if (input$selmap.variable%in%c("LPUE","DPUE") & input$selmap.rtilike=="No") updatedItems[[1]] = c("month","year","fortnight")
@@ -339,7 +339,7 @@ server <- function(input, output, session) {
       updatedItems[[1]] = c("fortnight")
       updatedItems[[2]]=c("RTI rectangle")
     }
-    if((input$selmap.variable=="Biomass") | (input$selmap.variable%in%c("Landings","Discards") & input$selmap.catchVariable!="Explicit")) updatedItems[[2]]=c("ICES rectangle","RTI rectangle")
+    if((input$selmap.variable=="Biomass") | (input$selmap.variable%in%c("Landings","Discards") & input$selmap.catchVariable!="Explicit")) updatedItems[[2]]=c("RTI rectangle","ICES rectangle")
     return(updatedItems)
   })
   

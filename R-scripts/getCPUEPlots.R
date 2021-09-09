@@ -81,46 +81,54 @@
 # sce=attr(explicitCatchTimeSeries,"names")
 # facet="scenario"
 
+
 getExplicitCPUETimeSeries = function(data2plot,aggScale="year",metierSel="All",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce,facet="métier"){
   
   data2plot = data2plot %>%
-    mutate(metierId=factor(metierId,metierNames$metierId,labels=metierNames$name)) %>% 
-    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
-    mutate(metierId=as.character(metierId))%>% 
-    mutate(PopId=as.character(PopId))
+    filter(Fraction%in%chosenFraction & scename %in%sce)
   
   if(aggScale=="fortnight") data2plot$time=data2plot$fortnight
   if(aggScale=="month") data2plot$time=data2plot$month
   if(aggScale=="year") data2plot$time=data2plot$year
+  
+  if(!"All" %in% popSel) data2plot = subset(data2plot,PopId%in%popSel)
+  
   if("All" %in% metierSel){
     data2bind=data2plot %>% 
-      mutate(metierId="All")
-    data2plot=subset(data2plot,metierId%in%c("All",as.character(metierNames$name[metierNames$metierId%in%metierSel[metierSel!="All"]])))
-    data2plot=bind_rows(data2plot,data2bind)
+      mutate(metierId=NA)
+    data2plot=data2plot %>% 
+      filter(metierId%in%c(NA,metierSel[metierSel!="All"]))%>%
+      bind_rows(data2bind)
   }else{
-    data2plot=subset(data2plot,metierId%in%as.character(metierNames$name[metierNames$metierId%in%metierSel]))
+    data2plot=data2plot %>%
+      filter(metierId%in%metierSel)
   }
-  if(!"All" %in% popSel) data2plot = subset(data2plot,PopId%in%as.character(stockNames$spp[stockNames$PopId%in%popSel]))
   
   if(facet=="scenario"){
     data2plot = data2plot %>%
-      filter(Fraction%in%chosenFraction & scename==sce) %>%
+      mutate(metierId=factor(metierId,metierNames$metierId,labels=metierNames$name)) %>% 
+      mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
+      mutate(metierId=as.character(metierId))%>% 
+      mutate(PopId=as.character(PopId)) %>%
       group_by(PopId,metierId,Fraction,time,scename) %>%
       summarize(value=sum(value),effort=sum(effort)) %>%
       ungroup() %>%
       mutate(CPUE=value/effort) %>%
       ggplot(aes(x=time,y=CPUE,colour=metierId,linetype=Fraction,shape=Fraction,group=interaction(metierId,Fraction,PopId)))+
-        geom_line(size=1)+
-        geom_point(size=2)+
-        facet_wrap(~PopId,scales="free_y")+
-        labs(x=paste("Time step (",aggScale,")",sep=""),y="CPUE\n(tons/h)",colour="Métier",linetype="Fraction",shape="Fraction", title = paste("Explicit CPUE time series\n",sce,sep=""))+
-        theme_minimal()+
-        theme(axis.title.y = element_text(angle=0,vjust=0.5))
+      geom_line(size=1)+
+      geom_point(size=2)+
+      facet_wrap(~PopId,scales="free_y")+
+      labs(x=paste("Time step (",aggScale,")",sep=""),y="CPUE\n(tons/h)",colour="Métier",linetype="Fraction",shape="Fraction", title = paste("Explicit CPUE time series\n",sce,sep=""))+
+      theme_minimal()+
+      theme(axis.title.y = element_text(angle=0,vjust=0.5))
   }
   
   if(facet=="métier"){
     data2plot = data2plot %>%
-      filter(Fraction%in%chosenFraction & scename %in%sce) %>%
+      mutate(metierId=factor(metierId,metierNames$metierId,labels=metierNames$name)) %>% 
+      mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>% 
+      mutate(metierId=as.character(metierId))%>% 
+      mutate(PopId=as.character(PopId)) %>%
       group_by(PopId,metierId,Fraction,time,scename) %>%
       summarize(value=sum(value),effort=sum(effort)) %>%
       ungroup() %>%
@@ -135,16 +143,14 @@ getExplicitCPUETimeSeries = function(data2plot,aggScale="year",metierSel="All",p
   }
   return(data2plot)
 }
-
 # plot2render=getExplicitCPUETimeSeries(explicitCPUETimeSeries,aggScale,metierSel,popSel,chosenFraction,sce=sce,facet)
 
 ##################
 # Prepare bar plots
 
 getExplicitCPUEBarPlot = function(explicitCatchSpatial,aggScale="year",metierSel="All",popSel="All",chosenFraction=c("Landings","Discards"),sce=sce){
-  data2plot = explicitCatchSpatial %>%
-    mutate(metierId=factor(metierId,metierNames$metierId,labels=metierNames$name)) %>%
-    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp))
+  data2plot = explicitCatchSpatial%>%
+    filter(Fraction%in%chosenFraction & time%in%c(min(time),max(time)))
   
   if(aggScale=="fortnight") data2plot$time=data2plot$fortnight
   if(aggScale=="month") data2plot$time=data2plot$month
@@ -152,15 +158,16 @@ getExplicitCPUEBarPlot = function(explicitCatchSpatial,aggScale="year",metierSel
   if("All" %in% metierSel){
     data2plot$metierId="All"
   }else{
-    data2plot=subset(data2plot,metierId%in%levels(data2plot$metierId)[metierSel])
+    data2plot=subset(data2plot,metierId%in%metierSel)
   }
-  if(!"All" %in% popSel) data2plot = subset(data2plot,PopId%in%levels(data2plot$PopId)[popSel])
+  if(!"All" %in% popSel) data2plot = subset(data2plot,PopId%in%popSel)
 
   data2plot = data2plot %>%
-    filter(Fraction%in%chosenFraction & time%in%c(min(time),max(time))) %>%
     group_by(PopId,metierId,Fraction,time) %>%
     summarize(value=sum(value),effort=sum(effort)) %>%
     ungroup() %>%
+    mutate(metierId=factor(metierId,metierNames$metierId,labels=metierNames$name)) %>%
+    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp))
     mutate(CPUE=value/effort) %>%
     ggplot(aes(x=interaction(Fraction,metierId),y=CPUE,fill=PopId,group=interaction(metierId,Fraction,PopId)))+
       geom_bar(stat="identity",colour="black")+
@@ -186,9 +193,7 @@ getExplicitCPUEMap = function(data2process,popNum=0,timeStep=1,metierNum=0,fract
   }
 
   data2plot = data2plot %>%
-    filter(PopId==popNum) %>%
-    mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>%
-    mutate(PopId=droplevels(PopId))
+    filter(PopId==popNum & Fraction==fractionName)
   
   if(aggScale=="fortnight")data2plot$time= data2plot$fortnight
   if(aggScale=="month")data2plot$time= data2plot$month
@@ -202,6 +207,8 @@ getExplicitCPUEMap = function(data2process,popNum=0,timeStep=1,metierNum=0,fract
       group_by(PopId,time,metierId,layer,Long,Lat,Fraction) %>%
       summarize(value=sum(value,na.rm=T),effort=sum(effort,na.rm=T)) %>%
       ungroup() %>%
+      mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>%
+      mutate(PopId=droplevels(PopId)) %>%
       mutate(CPUE=value/effort)
   }else{
     data2plot=data2plot %>%
@@ -210,15 +217,17 @@ getExplicitCPUEMap = function(data2process,popNum=0,timeStep=1,metierNum=0,fract
       group_by(PopId,time,metierId,layer,Long,Lat,Fraction) %>%
       summarize(value=sum(value,na.rm=T),effort=sum(effort,na.rm=T)) %>%
       ungroup() %>%
+      mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>%
+      mutate(PopId=droplevels(PopId)) %>%
       mutate(CPUE=value/effort)
   }
 
   if(!gif){
-    maxScale = max(data2plot$CPUE[data2plot$Fraction==fractionName]) # Metier selection done previously
+    maxScale = max(data2plot$CPUE) # Metier and fraction selection done previously
 
     if(resScale=="All"){
       data2plot = data2plot%>%
-        filter(time==timeStep & Fraction==fractionName) %>% # Metier selection done previously
+        filter(time==timeStep) %>% # Metier and fraction selection done previously
         ggplot(aes(x=Long,y=Lat,colour=CPUE))+
         geom_point(size=1)+
         scale_colour_gradientn(colours = viridis(7),limits=c(0,maxScale))+
@@ -229,7 +238,7 @@ getExplicitCPUEMap = function(data2process,popNum=0,timeStep=1,metierNum=0,fract
     }
     if(resScale=="RTI"){
       data2plot = data2plot%>%
-        filter(time==timeStep & Fraction==fractionName) %>% # Metier selection done previously
+        filter(time==timeStep) %>% # Metier and fraction selection done previously
         ggplot(aes(x=Long,y=Lat,fill=CPUE))+
         geom_tile(width=0.5,height=0.25,colour="black")+
         scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
@@ -240,7 +249,7 @@ getExplicitCPUEMap = function(data2process,popNum=0,timeStep=1,metierNum=0,fract
     }
     if(resScale=="ICES"){
       data2plot = data2plot%>%
-        filter(time==timeStep & Fraction==fractionName) %>% # Metier selection done previously
+        filter(time==timeStep) %>% # Metier and fraction selection done previously
         ggplot(aes(x=Long,y=Lat,fill=CPUE))+
         geom_tile(width=1,height=0.5,colour="black")+
         scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
@@ -252,11 +261,10 @@ getExplicitCPUEMap = function(data2process,popNum=0,timeStep=1,metierNum=0,fract
     return(data2plot)
   }
   if (gif){
-    maxScale = max(data2plot$CPUE[data2plot$Fraction==fractionName]) # Metier selection done previously
+    maxScale = max(data2plot$CPUE) # Metier selection done previously
 
     if(resScale=="All"){
-      plotMap = data2plot%>%
-        filter(Fraction==fractionName) %>% # Metier selection done previously
+      plotMap = data2plot%>%# Metier and fraction selection done previously
         ggplot(aes(x=Long,y=Lat,colour=CPUE, group=seq_along(time)))+
         geom_point(size=1)+
         scale_colour_gradientn(colours = viridis(7),limits=c(0,maxScale))+
@@ -267,8 +275,7 @@ getExplicitCPUEMap = function(data2process,popNum=0,timeStep=1,metierNum=0,fract
         transition_manual(time)
     }
     if(resScale=="RTI"){
-      plotMap = data2plot%>%
-        filter(Fraction==fractionName) %>% # Metier selection done previously
+      plotMap = data2plot%>%# Metier and fraction selection done previously
         ggplot(aes(x=Long,y=Lat,fill=CPUE, group=seq_along(time)))+
         geom_tile(width=0.5,height=0.25,colour="black")+
         scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
@@ -279,8 +286,7 @@ getExplicitCPUEMap = function(data2process,popNum=0,timeStep=1,metierNum=0,fract
         transition_manual(time)
     }
     if(resScale=="ICES"){
-      plotMap = data2plot%>%
-        filter(Fraction==fractionName) %>% # Metier selection done previously
+      plotMap = data2plot%>%# Metier and fraction selection done previously
         ggplot(aes(x=Long,y=Lat,fill=CPUE, group=seq_along(time)))+
         geom_tile(width=1,height=0.5,colour="black")+
         scale_fill_gradientn(colours = viridis(7),limits=c(0,maxScale))+
@@ -351,7 +357,7 @@ getExplicitCPUERTILikeMap = function(explicitCatchSpatialRTI,popNum=7,timeStep=1
   if (is.na(popNum)) popNum = c(1,5,6,11,12,13,14,16,24)
 
   data2plot = data2plot %>%
-    filter(PopId%in%popNum) %>%
+    filter(PopId%in%popNum & Fraction==fractionName) %>%
     mutate(PopId=factor(PopId,stockNames$PopId,labels=stockNames$spp)) %>%
     mutate(PopId=droplevels(PopId))
   
@@ -404,7 +410,7 @@ getExplicitCPUERTILikeMap = function(explicitCatchSpatialRTI,popNum=7,timeStep=1
   if(!gif){
 
       plot2return = data2plot%>%
-        filter(time==timeStep & Fraction==fractionName) %>% # Metier selection done previously
+        filter(time==timeStep) %>% # Metier and fraction selection done previously
         ggplot(aes(x=Long,y=Lat,fill=RTI))+
           geom_tile(width=0.5,height=0.25,colour="black")+
           scale_fill_manual(values = viridis(5))+
@@ -417,8 +423,7 @@ getExplicitCPUERTILikeMap = function(explicitCatchSpatialRTI,popNum=7,timeStep=1
   }
   if (gif){
 
-      plotMap = data2plot%>%
-        filter(Fraction==fractionName) %>% # Metier selection done previously
+      plotMap = data2plot%>% # Metierand fraction  selection done previously
         ggplot(aes(x=Long,y=Lat,fill=RTI, group=seq_along(time)))+
         geom_tile(width=0.5,height=0.25,colour="black")+
         scale_fill_manual(values = viridis(5))+
