@@ -355,7 +355,7 @@ server <- function(input, output, session) {
     updateSelectInput(session, "sel.aggTime",choices = outVar()[[3]], selected =outVar()[[3]][1]) 
   })
   
-  mapsOnAgridEffort = function(effortMaps,scale,metierNum,monthNum,scenames){
+  mapsOnAgridEffort = function(effortMaps,scale,metierNum,timeStep,aggScale,scenames){
     # scale="Node" #input$selmap.scale
     # monthNum=2# input$selmap.month
     # metierNum=NA #metierNum
@@ -365,13 +365,13 @@ server <- function(input, output, session) {
     for(dataset in effortMaps){
       i=i+1
       if(scale=="Node"){
-        plotList[[i]]=as_grob(getmapEffortNodeAll(dataset$VesselVmsLikeCond,gif=FALSE,idMetier=metierNum,monthNum,scenames[i]))
+        plotList[[i]]=as_grob(getmapEffortNodeAll(dataset$VesselVmsLikeCond,gif=FALSE,idMetier=metierNum,timeStep,aggScale,scenames[i]))
       }
       if(scale=="ICES rectangle"){
-        plotList[[i]]=as_grob(getmapEffortICESAll(dataset$polygonsICES,gif=FALSE,idMetier=metierNum,monthNum,scenames[i]))
+        plotList[[i]]=as_grob(getmapEffortICESAll(dataset$polygonsICES,gif=FALSE,idMetier=metierNum,timeStep,aggScale,scenames[i]))
       }
       if(scale=="RTI rectangle"){
-        plotList[[i]]=as_grob(getmapEffortRTIAll(dataset$polygonsRTI,gif=FALSE,idMetier=metierNum,monthNum,scenames[i]))
+        plotList[[i]]=as_grob(getmapEffortRTIAll(dataset$polygonsRTI,gif=FALSE,idMetier=metierNum,timeStep,aggScale,scenames[i]))
       }
     }
     numCols = 4
@@ -379,7 +379,7 @@ server <- function(input, output, session) {
     return(grid.arrange(grobs=plotList,ncol=numCols))
   }
   
-  mapsOnAgridBiomass = function(biomassMaps,scale,popNum,monthNum,scenames){
+  mapsOnAgridBiomass = function(biomassMaps,scale,popNum,timeScale,timeStep,scenames){
     # scale="Node" #input$selmap.scale
     # monthNum=2# input$selmap.month
     # metierNum=NA #metierNum
@@ -392,10 +392,10 @@ server <- function(input, output, session) {
       #   plotList[[i]]=as_grob(getBiomassMapNode(dataset$interimMap,popNum,timeStep=monthNum,gif=F,scename=scenames[i],scale="Node"))
       # }
       if(scale=="ICES rectangle"){
-        plotList[[i]]=as_grob(getBiomassMapNode(dataset$interimMapICES,popNum,timeStep=monthNum,gif=F,scename=scenames[i],scale="ICES rectangle"))
+        plotList[[i]]=as_grob(getBiomassMapNode(dataset$interimMapICES,popNum,timeScale,timeStep,gif=F,scename=scenames[i],scale="ICES rectangle"))
       }
       if(scale=="RTI rectangle"){
-        plotList[[i]]=as_grob(getBiomassMapNode(dataset$interimMapRTI,popNum,timeStep=monthNum,gif=F,scename=scenames[i],scale="RTI rectangle"))
+        plotList[[i]]=as_grob(getBiomassMapNode(dataset$interimMapRTI,popNum,timeScale,timeStep,gif=F,scename=scenames[i],scale="RTI rectangle"))
       }
     }
     numCols = 4
@@ -501,13 +501,21 @@ server <- function(input, output, session) {
     
     if(input$selmap.variable=="Effort"){
       metierNum=input$selmap.metier
+      timeSelect = input$selmap.month
+      
+      if(input$selmap.timescale=="year")  timeSelect = input$selmap.year
       if(metierNum=="All") metierNum = NA
-      plot2render=mapsOnAgridEffort(effortMaps,scale=input$selmap.scale,metierNum,monthNum=input$selmap.month,attr(effortMaps,"names"))
+      
+      plot2render=mapsOnAgridEffort(effortMaps,scale=input$selmap.scale,metierNum,timeStep=timeSelect,aggScale=input$selmap.timescale,attr(effortMaps,"names"))
     }
     
     if(input$selmap.variable=="Biomass"){
       numOfPop=input$selmap.pop
-      plot2render=mapsOnAgridBiomass(biomassMaps,scale=input$selmap.scale,popNum=numOfPop,monthNum=input$selmap.month,attr(biomassMaps,"names"))
+      timeSelect = input$selmap.month -1
+      
+      if(input$selmap.timescale=="year")  timeSelect = input$selmap.year
+      
+      plot2render=mapsOnAgridBiomass(biomassMaps,scale=input$selmap.scale,popNum=numOfPop,timeScale=input$selmap.timescale,timeStep=timeSelect,attr(biomassMaps,"names"))
     }
     
     if(input$selmap.variable%in%c("Discards","Landings")){

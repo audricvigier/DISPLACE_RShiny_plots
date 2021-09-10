@@ -428,10 +428,31 @@ getNBSSBTimeSeries = function(data2plot=biomassTimeSeries,aggScale="year",variab
 # 
 # save(interimMap,RTIrectangle,icesquarterrectangle,file=paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))
 
-getBiomassMapNode= function(interimMap,popNum,timeStep=NA,gif=F,scename=sce,scale="Node"){
+# interimMap=biomassMaps[[1]]$interimMapICES
+# popNum=7
+# timeScale="year"
+# timeStep=2010
+# gif=F
+# scename="baseline0Selected"
+# scale="ICES rectangle"
+
+getBiomassMapNode= function(interimMap,popNum,timeScale="month",timeStep=NA,gif=F,scename=sce,scale="Node"){
   
   plotMap = interimMap %>%
     filter(PopId==popNum)
+  
+  timeLabel=" month "
+  
+  if(timeScale=="year"){
+    plotMap = plotMap %>% 
+      mutate(TStep =TStep/12) %>% # Round values for January only (do not sum over the whole year!!!)
+      filter(TStep==floor(TStep)) %>% 
+      mutate(TStep=2010+TStep) %>% 
+      group_by(layer,TStep,PopId,Long,Lat) %>% 
+      summarize(TotalW=sum(TotalW)) %>% 
+      ungroup()
+    timeLabel=" January "
+  }
   
   # if(scale=="RTI rectangle"){ 
   #   plotMap = plotMap %>% 
@@ -462,12 +483,12 @@ getBiomassMapNode= function(interimMap,popNum,timeStep=NA,gif=F,scename=sce,scal
       plotMap = plotMap+
         geom_point(size=1,aes(colour=TotalW))+
         scale_colour_gradientn(trans="log",colours = viridis(7),limits=c(10^(-15),1))+
-        labs(x="Longitude",y="Latitude",colour="Biomass\ndistribution\n(ratio)",title=paste("Population ",popNum,"  month  ",timeStep," biomass distribution\n",scename,sep=""))
+        labs(x="Longitude",y="Latitude",colour="Biomass\ndistribution\n(ratio)",title=paste("Population ",popNum,timeLabel,timeStep," biomass distribution\n",scename,sep=""))
     }else{
       plotMap = plotMap+
         geom_tile(size=1,aes(fill=TotalW),colour="black")+
         scale_fill_gradientn(trans="log",colours = viridis(7),limits=c(10^(-15),1))+
-        labs(x="Longitude",y="Latitude",fill="Biomass\ndistribution\n(ratio)",title=paste("Population ",popNum,"  month  ",timeStep," biomass distribution\n",scename,sep=""))
+        labs(x="Longitude",y="Latitude",fill="Biomass\ndistribution\n(ratio)",title=paste("Population ",popNum,timeLabel,timeStep," biomass distribution\n",scename,sep=""))
     }
     
     return(plotMap)
@@ -484,15 +505,16 @@ getBiomassMapNode= function(interimMap,popNum,timeStep=NA,gif=F,scename=sce,scal
       plotMap = plotMap+
         geom_point(size=1,aes(colour=TotalW))+
         scale_colour_gradientn(trans="log",colours = viridis(7),limits=c(10^(-15),1))+
-        labs(x="Longitude",y="Latitude",colour="Biomass\ndistribution\n(ratio)",title=paste("Population ",popNum,"  month  {frame} biomass distribution\n",scename,sep=""))
+        labs(x="Longitude",y="Latitude",colour="Biomass\ndistribution\n(ratio)",title=paste("Population ",popNum,timeLabel,"{frame} biomass distribution\n",scename,sep=""))
     }else{
       plotMap = plotMap+
         geom_tile(size=1,aes(fill=TotalW),colour="black")+
         scale_fill_gradientn(trans="log",colours = viridis(7),limits=c(10^(-15),1))+
-        labs(x="Longitude",y="Latitude",fill="Biomass\ndistribution\n(ratio)",title=paste("Population ",popNum,"  month  {frame} biomass distribution\n",scename,sep=""))
+        labs(x="Longitude",y="Latitude",fill="Biomass\ndistribution\n(ratio)",title=paste("Population ",popNum,timeLabel,"{frame} biomass distribution\n",scename,sep=""))
     }
     
-    plotMapAnim = animate(plotMap, renderer = gifski_renderer(),duration=length(unique(interimMap$TStep))/4, nframes=length(unique(interimMap$TStep))/4,height=800,width=800,units="px",res=100) #36 sec Only way to reduce rendering time is to reduce the number of frames / I can't render in svg (I tried...)
+    if(timeScale=="month") plotMapAnim = animate(plotMap, renderer = gifski_renderer(),duration=length(unique(interimMap$TStep))/4, nframes=length(unique(interimMap$TStep))/4,height=800,width=800,units="px",res=100) #36 sec Only way to reduce rendering time is to reduce the number of frames / I can't render in svg (I tried...)
+    if(timeScale=="year") plotMapAnim = animate(plotMap, renderer = gifski_renderer(),duration=length(unique(interimMap$TStep)), nframes=length(unique(interimMap$TStep)),height=800,width=800,units="px",res=100) #36 sec Only way to reduce rendering time is to reduce the number of frames / I can't render in svg (I tried...)
     if(scale=="Node"){ 
       anim_save(animation=plotMapAnim,filename=paste("biomass_",popNum,"_",scename,".gif",sep=""),path=paste(general$main.path,general$case_study,sce,"output",sep="/"))
     }
