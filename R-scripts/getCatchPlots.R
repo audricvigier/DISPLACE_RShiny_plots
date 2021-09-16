@@ -353,22 +353,22 @@ getImplicitCatchSpatial = function(PopValues,explicitCatchSpatial,nodes2merge){
   return(ImplicitCatch)
 }
 
-getImplicitCatchSpatialFast = function(ImplicitCatch,NodesDef,explicitCatchSpatial,nodes2merge,scale="ICES"){
-
+getImplicitCatchSpatialFast =  function(ImplicitCatch,NodesDef,explicitCatchSpatial,nodes2merge,scale="ICES"){
+  
   interimMergeFunction = function(datax,datay){
     data2return=merge(datax,datay, by=c("PopId","icesrectanglecode"),all.x=T)
     return(data2return)
   }
-	
+  
   if(scale=="ICES"){
-	  cumcatchLog = explicitCatchSpatial %>% 
-		group_by(PopId,month,year,Fraction,icesrectanglecode) %>% 
-		summarize(value=sum(value)) %>% 
-		ungroup() %>% 
-		as.data.frame() %>% 
-		reshape2::dcast(.,PopId+month+year+icesrectanglecode~Fraction,value.var="value")%>% 
-		group_by(month) %>% 
-		nest()
+    cumcatchLog = explicitCatchSpatial %>% 
+      group_by(PopId,month,year,Fraction,icesrectanglecode) %>% 
+      summarize(value=sum(value)) %>% 
+      ungroup() %>% 
+      as.data.frame() %>% 
+      reshape2::dcast(.,PopId+month+year+icesrectanglecode~Fraction,value.var="value")%>% 
+      group_by(month) %>% 
+      nest()
   }
   if(scale=="RTI"){
     cumcatchLog = explicitCatchSpatial %>% 
@@ -377,92 +377,103 @@ getImplicitCatchSpatialFast = function(ImplicitCatch,NodesDef,explicitCatchSpati
       ungroup() %>% 
       as.data.frame() %>% 
       reshape2::dcast(.,PopId+month+year+rtirectangle~Fraction,value.var="value")%>% 
-    group_by(month) %>% 
-    nest()
+      group_by(month) %>% 
+      nest()
   }
-
+  
   #  a=Sys.time()
   if(scale=="ICES"){	  
-	  ImplicitCatch = ImplicitCatch %>%
-		unnest() %>% 
-		group_by(TStep,PopId,icesrectanglecode) %>% 
-		summarize(CumDiscards=sum(CumDiscards),CumCatches=sum(CumCatches)) %>% 
-		ungroup() %>% 
-		arrange(icesrectanglecode,PopId,TStep) %>% 
-		group_by(PopId,icesrectanglecode) %>% 
-		mutate(CumDiscards=c(min(CumDiscards),diff(CumDiscards)),CumCatches=c(min(CumCatches),diff(CumCatches))) %>% # From cumulative time series to time series
-		ungroup()
-		
-	  ImplicitCatch = ImplicitCatch%>% 
-		group_by(TStep) %>% 
-		nest() %>% 
-		mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>x]))] )) %>% 
-		mutate(month=month-1) %>% 
-		filter(month!=0)# %>% 
-		#unnest() %>% 
-		#ungroup()
-		
-	  ImplicitCatch = merge(ImplicitCatch,cumcatchLog, by=c("month"),all=T)
-	  ImplicitCatch=as_tibble(ImplicitCatch) %>% 
-		filter(month!=132) # For some stupid reason that month does not work.
-	  ImplicitCatch$data=NULL
-	  for(i in 1:dim(ImplicitCatch)[1]){ # Impossible to do anything in vectorized version, fucking hate these stupid bloody outputs
-		ImplicitCatch$data[[i]] = merge(as.data.frame(ImplicitCatch$data.x[[i]]),as.data.frame(ImplicitCatch$data.y[[i]]), by=c("PopId","icesrectanglecode"),all.x=T)%>% 
-		  mutate(Landings=replace_na(Landings,0),Discards=replace_na(Discards,0))
-		  
-	  }  
-	  ImplicitCatch = ImplicitCatch %>% 
-		select(-c(data.x,data.y)) %>% 
-		unnest() %>% 
-		ungroup() %>% 
-		mutate(year=floor((month-1)/12)) %>% 
-		mutate(Landings =CumCatches-Landings, Discards =CumDiscards-Discards) %>% 
-		select(-c(CumDiscards,CumCatches,TStep)) %>% 
-		#group_by(month,PopId,NodeId,year,icesrectanglecode,rtirectangle,Long,Lat) %>% Useless to group it
-		melt(id.vars=c("PopId","month","year","icesrectanglecode")) %>% 
-		rename(Fraction=variable)
+    ImplicitCatch = ImplicitCatch %>%
+      unnest() %>% 
+      group_by(TStep,PopId,icesrectanglecode) %>% 
+      summarize(CumDiscards=sum(CumDiscards),CumCatches=sum(CumCatches)) %>% 
+      ungroup() %>% 
+      arrange(icesrectanglecode,PopId,TStep) %>% 
+      group_by(PopId,icesrectanglecode) %>% 
+      mutate(CumDiscards=c(min(CumDiscards),diff(CumDiscards)),CumCatches=c(min(CumCatches),diff(CumCatches))) %>% # From cumulative time series to time series
+      ungroup()
+    
+    ImplicitCatch = ImplicitCatch%>% 
+      group_by(TStep) %>% 
+      nest() %>% 
+      mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>x]))] )) %>% 
+      mutate(month=month-1) %>% 
+      filter(month!=0)# %>% 
+    #unnest() %>% 
+    #ungroup()
+    
+    ImplicitCatch = merge(ImplicitCatch,cumcatchLog, by=c("month"),all=T)
+    ImplicitCatch=as_tibble(ImplicitCatch) %>% 
+      filter(month!=max(ImplicitCatch$month)) # For some reason that month does not work.
+    ImplicitCatch$data=NULL
+    for(i in 1:dim(ImplicitCatch)[1]){ # Impossible to do anything in vectorized version
+      if(!is.logical(ImplicitCatch$data.y[[i]])){
+        ImplicitCatch$data[[i]] = merge(as.data.frame(ImplicitCatch$data.x[[i]]),as.data.frame(ImplicitCatch$data.y[[i]]), by=c("PopId","icesrectanglecode"),all.x=T)%>% 
+          mutate(Landings=replace_na(Landings,0),Discards=replace_na(Discards,0))
+      }
+      if(is.logical(ImplicitCatch$data.y[[i]])){
+        ImplicitCatch$data[[i]] = ImplicitCatch$data.x[[i]]%>% 
+          mutate(Landings=0,Discards=0)
+      }
+    }  
+    ImplicitCatch = ImplicitCatch %>% 
+      select(-c(data.x,data.y)) %>% 
+      unnest() %>% 
+      ungroup() %>% 
+      mutate(year=floor((month-1)/12)) %>% 
+      mutate(Landings =CumCatches-Landings, Discards =CumDiscards-Discards) %>% 
+      select(-c(CumDiscards,CumCatches,TStep)) %>% 
+      #group_by(month,PopId,NodeId,year,icesrectanglecode,rtirectangle,Long,Lat) %>% Useless to group it
+      melt(id.vars=c("PopId","month","year","icesrectanglecode")) %>% 
+      rename(Fraction=variable)
   }
   
   if(scale=="RTI"){	  
-	  ImplicitCatch = ImplicitCatch %>%
-		unnest() %>% 
-		group_by(TStep,PopId,rtirectangle) %>% 
-		summarize(CumDiscards=sum(CumDiscards),CumCatches=sum(CumCatches)) %>% 
-		ungroup() %>% 
-		arrange(rtirectangle,PopId,TStep) %>% 
-		group_by(PopId,rtirectangle) %>% 
-		mutate(CumDiscards=c(min(CumDiscards),diff(CumDiscards)),CumCatches=c(min(CumCatches),diff(CumCatches))) %>% # From cumulative time series to time series
-		ungroup()
-		
-	  ImplicitCatch = ImplicitCatch%>% 
-		group_by(TStep) %>% 
-		nest() %>% 
-		mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>x]))] )) %>% 
-		mutate(month=month-1) %>% 
-		filter(month!=0)# %>% 
-		#unnest() %>% 
-		#ungroup()
-		
-	  ImplicitCatch = merge(ImplicitCatch,cumcatchLog, by=c("month"),all=T)
-	  ImplicitCatch=as_tibble(ImplicitCatch) %>% 
-		filter(month!=132) # For some stupid reason that month does not work.
-	  ImplicitCatch$data=NULL
-	  for(i in 1:dim(ImplicitCatch)[1]){ # Impossible to do anything in vectorized version, fucking hate these stupid bloody outputs
-		ImplicitCatch$data[[i]] = merge(as.data.frame(ImplicitCatch$data.x[[i]]),as.data.frame(ImplicitCatch$data.y[[i]]), by=c("PopId","rtirectangle"),all.x=T)%>% 
-		  mutate(Landings=replace_na(Landings,0),Discards=replace_na(Discards,0))
-	  }
-	  ImplicitCatch = ImplicitCatch %>% 
-		select(-c(data.x,data.y)) %>% 
-		unnest() %>% 
-		ungroup() %>% 
-		mutate(year=floor((month-1)/12)) %>% 
-		mutate(Landings =CumCatches-Landings, Discards =CumDiscards-Discards) %>% 
-		select(-c(CumDiscards,CumCatches,TStep)) %>% 
-		#group_by(month,PopId,NodeId,year,icesrectanglecode,rtirectangle,Long,Lat) %>% Useless to group it
-		melt(id.vars=c("PopId","month","year","rtirectangle")) %>% 
-		rename(Fraction=variable)
+    ImplicitCatch = ImplicitCatch %>%
+      unnest() %>% 
+      group_by(TStep,PopId,rtirectangle) %>% 
+      summarize(CumDiscards=sum(CumDiscards),CumCatches=sum(CumCatches)) %>% 
+      ungroup() %>% 
+      arrange(rtirectangle,PopId,TStep) %>% 
+      group_by(PopId,rtirectangle) %>% 
+      mutate(CumDiscards=c(min(CumDiscards),diff(CumDiscards)),CumCatches=c(min(CumCatches),diff(CumCatches))) %>% # From cumulative time series to time series
+      ungroup()
+    
+    ImplicitCatch = ImplicitCatch%>% 
+      group_by(TStep) %>% 
+      nest() %>% 
+      mutate(month = sapply(TStep, function(x) months$month[which(months$TStep==min(months$TStep[months$TStep>x]))] )) %>% 
+      mutate(month=month-1) %>% 
+      filter(month!=0)# %>% 
+    #unnest() %>% 
+    #ungroup()
+    
+    ImplicitCatch = merge(ImplicitCatch,cumcatchLog, by=c("month"),all=T)
+    ImplicitCatch=as_tibble(ImplicitCatch) %>% 
+      filter(month!=max(ImplicitCatch$month)) # For some reason that month does not work.
+    ImplicitCatch$data=NULL
+    for(i in 1:dim(ImplicitCatch)[1]){ # Impossible to do anything in vectorized version
+      if(!is.logical(ImplicitCatch$data.y[[i]])){
+        ImplicitCatch$data[[i]] = merge(as.data.frame(ImplicitCatch$data.x[[i]]),as.data.frame(ImplicitCatch$data.y[[i]]), by=c("PopId","rtirectangle"),all.x=T)%>% 
+          mutate(Landings=replace_na(Landings,0),Discards=replace_na(Discards,0))
+      }
+      if(is.logical(ImplicitCatch$data.y[[i]])){
+        ImplicitCatch$data[[i]] = ImplicitCatch$data.x[[i]]%>% 
+          mutate(Landings=0,Discards=0)
+      }
+    }  
+    ImplicitCatch = ImplicitCatch %>% 
+      select(-c(data.x,data.y)) %>% 
+      unnest() %>% 
+      ungroup() %>% 
+      mutate(year=floor((month-1)/12)) %>% 
+      mutate(Landings =CumCatches-Landings, Discards =CumDiscards-Discards) %>% 
+      select(-c(CumDiscards,CumCatches,TStep)) %>% 
+      #group_by(month,PopId,NodeId,year,icesrectanglecode,rtirectangle,Long,Lat) %>% Useless to group it
+      melt(id.vars=c("PopId","month","year","rtirectangle")) %>% 
+      rename(Fraction=variable)
   }
- 
+  
   return(ImplicitCatch)
 }
 

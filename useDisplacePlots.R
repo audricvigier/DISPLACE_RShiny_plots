@@ -45,12 +45,14 @@ general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displa
                                       nbPops=27,
                                       nbSzgroup=14,
                                       #theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
-                                      theScenarios= c("baseline0Selected","baseline1Selected"),
+                                      #theScenarios= c("baseline0Selected","baseline1Selected"),
+                                      theScenarios= c("baseline2","baseline3","baseline4"),
                                       #nbSimus=20,
                                       nbSimus=1,
                                       useSQLite=FALSE)
-calib=FALSE
+calib=TRUE
 if(! calib) for (i in 1:length(general$namesimu)) general$namesimu[[i]] = "simu1"
+if(calib) for (i in 1:length(general$namesimu)) general$namesimu[[i]] = c("calib_multipliers_SCE_10","calib_multipliers_SCE_10","calib_multipliers_SCE_7")[i]
 explicit_pops = 0:(general$nbpops-1)
 
 ##################
@@ -122,7 +124,7 @@ getAggLoglikeFiles(general,explicit_pops=0:26,implicit_pops=NULL,what="CPUE")
 
 #N IN THOUSANDS per group, time step and pop. No spatial dimension. Also does some plots. WHATEVER THESE PLOTS are supposed to be, redo them with tidyverse. (an SSB plot I've done better (check though); N per size class pop and month (redo with tidyverse)). ALso throws an error because legends are poorly managed.
 #getAggPoplikeFiles(general=general,explicit_pops=0:26,the_baseline ="calib_multipliers_")
-getAggPoplikeFiles(general=general,explicit_pops=0:26,the_baseline ="baseline0Selected")
+getAggPoplikeFiles(general=general,explicit_pops=0:26,the_baseline ="baseline2")
 
 #Produce average spatial layers over simulations, at a specific time step. Generates a text file with the average layer. How may should I generate (time step, type ?)
 #a_type : anything in that list cumcatches cumcatches_with_threshold cumdiscards cumdiscardsratio cumftime cumsweptarea cumulcatches end inc impact impact_per_szgroup nbchoked start.
@@ -138,7 +140,7 @@ getAggNodeBenthosLayerFiles(general,  a_tstep="34321")
 # create metier-wise indicators TO BE DONE)
 #This call is equivalent to expressAggLoglikeFilesIndicatorsRelativeToBaselineSce.R, but better implemented
 #getSimusOutcomes(general,a_baseline="calib_multipliers_",explicit_pops=0:26,selected="_met_")
-getSimusOutcomes(general,a_baseline="baseline0Selected",explicit_pops=0:26,selected="_met_")
+getSimusOutcomes(general,a_baseline="baseline2",explicit_pops=0:26,selected="_met_")
 
 #Does a bar plot on the previously derived indicators
 #This call is equivalent to boxplotAggLoglikeFilesIndicators.R, making it deprectaed
@@ -154,8 +156,11 @@ doOutcomesbarPlot(selected="all",selected_variables = c("feffort", "seffort", "n
 
 # Catch in Pop Values. Any difference with log like (= non explicit?) If so, I could track what I want.
 # WARNING issue with last month for 11 years run
+a=Sys.time()
+i=0
 for(sce in general$namefolderoutput){
-  if(calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
+  i=i+1
+  if(calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[i][[1]],"_out.db",sep=""))
   if(! calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[[which(general$namefolderoutput==sce)]],"_out.db",sep=""))
   #dbListTables(myConn)
   
@@ -199,7 +204,7 @@ for(sce in general$namefolderoutput){
   
   # Assume that for each trip, catch spatial distribution is proportional to effort spatial distribution
   
-  if(calib) catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  if(calib) catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",general$namesimu[i][[1]],".dat",sep=""))
   if(!calib) catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",general$namesimu[[which(general$namefolderoutput==sce)]],".dat",sep=""))
   names(catchAndEffortPertrip)= c('TStepDep', 'TStep', 'reason_back','cumsteaming', 'idx_node',  'Id', 'VE_REF', 'timeatsea', 'fuelcons', 'traveled_dist',  paste('pop.', 0:(general$nbpops-1), sep=''), "freq_metiers", "revenue", "rev_from_av_prices", "rev_explicit_from_av_prices", "fuelcost", "vpuf", "gav", "gradva","sweptr", "revpersweptarea",  paste('disc_',  explicit_pops, sep=''), "GVA", "GVAPerRevenue", "LabourSurplus", "GrossProfit", "NetProfit",  "NetProfitMargin", "GVAPerFTE", "RoFTA", "BER", "CRBER", "NetPresentValue", "numTrips")   
   
@@ -259,6 +264,8 @@ for(sce in general$namefolderoutput){
   #   }
   # }
 }
+b=Sys.time()
+b-a
 
 ##################
 ###
@@ -274,9 +281,11 @@ keepUniqueRows = function(df2process){
   return(df2process)
 }
 
+i=0
 for(sce in general$namefolderoutput){
+  i=i+1
   if(!file.exists(paste(general$main.path,general$case_study,sce,"output/forBiomassPlots.Rdata",sep="/"))){
-    if(calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
+    if(calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[i][[1]],"_out.db",sep=""))
     if(! calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[[which(general$namefolderoutput==sce)]],"_out.db",sep=""))
     
     #dbListFields(myConn,"PopValues")
@@ -369,8 +378,10 @@ for(sce in general$namefolderoutput){
 }
 
 # Do a separate loop to save PopDyn and interim object
+i=0
 for(sce in general$namefolderoutput){
-  if(calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
+  i=i+1
+  if(calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[i][[1]],"_out.db",sep=""))
   if(! calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[[which(general$namefolderoutput==sce)]],"_out.db",sep=""))
   PopValues = dbGetQuery(myConn,"SELECT * FROM PopValues") # To get Cumulated catch per population
   PopDyn = dbGetQuery(myConn,"SELECT * FROM PopDyn") # To get pop dynamics (spatially aggregated)
@@ -404,10 +415,12 @@ keepUniqueRows = function(df2process){
 }
 
 #1 first loop to create some interim files: 7'10" for 11 years
+i=0
 for(sce in general$namefolderoutput){
+  i=i+1
   startTime=Sys.time()
   a=Sys.time()
-  myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
+  if(calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[i][[1]],"_out.db",sep=""))
   if(! calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[[which(general$namefolderoutput==sce)]],"_out.db",sep=""))
   dbListTables(myConn)
   
@@ -459,7 +472,7 @@ for(sce in general$namefolderoutput){
     group_by(Id,TStepDep) %>% 
     mutate(prop=effort/sum(effort))
   
-  if(calib) catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  if(calib) catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",general$namesimu[i][[1]],".dat",sep=""))
   if(!calib) catchAndEffortPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",general$namesimu[[which(general$namefolderoutput==sce)]],".dat",sep=""))
 
   names(catchAndEffortPertrip)= c('TStepDep', 'TStep', 'reason_back','cumsteaming', 'idx_node',  'Id', 'VE_REF', 'timeatsea', 'fuelcons', 'traveled_dist',  paste('pop.', 0:(general$nbpops-1), sep=''), "freq_metiers", "revenue", "rev_from_av_prices", "rev_explicit_from_av_prices", "fuelcost", "vpuf", "gav", "gradva","sweptr", "revpersweptarea",  paste('disc_',  explicit_pops, sep=''), "GVA", "GVAPerRevenue", "LabourSurplus", "GrossProfit", "NetProfit",  "NetProfitMargin", "GVAPerFTE", "RoFTA", "BER", "CRBER", "NetPresentValue", "numTrips")   
@@ -517,10 +530,13 @@ for(sce in general$namefolderoutput){
 }
 
 #A second loop to create some interim files: 7'
+i=0
 for(sce in general$namefolderoutput){
+  
+  i=i+1
   startTime=Sys.time()
   c=Sys.time()
-  myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
+  if(calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[i][[1]],"_out.db",sep=""))
   if(! calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[[which(general$namefolderoutput==sce)]],"_out.db",sep=""))
   dbListTables(myConn)
   
@@ -570,7 +586,9 @@ for(sce in general$namefolderoutput){
 }
 
 #A third loop to create the wanted outputs. Code could be improved regarding memory usage. Time: 7'
+i=0
 for(sce in general$namefolderoutput){
+  i=i+1
   #1'6" to load files
   startTime=Sys.time()
   a=Sys.time()
@@ -600,6 +618,7 @@ for(sce in general$namefolderoutput){
   #1'35" for the 2 next lines
   #a=Sys.time()
   implicitCatchSpatialICES = getImplicitCatchSpatialFast(ImplicitCatch,NodesDef,explicitCatchSpatial,nodes2merge,scale="ICES")
+  
   implicitCatchSpatialRTI = getImplicitCatchSpatialFast(ImplicitCatch,NodesDef,explicitCatchSpatial,nodes2merge,scale="RTI")
   # b=Sys.time()
   # print(b-a)
@@ -718,7 +737,9 @@ for(sce in general$namefolderoutput){
 ###
 ##################
 
+i=0
 for(sce in general$namefolderoutput){
+  i=i+1
   
   #Only on 1 year...
   load(file=paste(general$main.path,general$case_study,sce,"output/forExplicitCatchsPlots.Rdata",sep="/"))
@@ -775,10 +796,10 @@ for(sce in general$namefolderoutput){
 ###F PLOTS
 ###
 ##################
-
+i=0
 for(sce in general$namefolderoutput){
-  
-  if(calib) FestimatesYear = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popdyn_annual_indic_",sce,length(general$namesimu[[1]]),".dat",sep=""))
+  i=i+1
+  if(calib) FestimatesYear = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popdyn_annual_indic_",general$namesimu[i],".dat",sep=""))
   if(!calib) FestimatesYear = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popdyn_annual_indic_",general$namesimu[[which(general$namefolderoutput==sce)]],".dat",sep=""))
   names(FestimatesYear)=c("TStep","pop","multi","multi2","Fbar","totland_kg","totdisc_kg","SSB_kg","tac","N0","N1","N2","N3","N4","N5","N6","N7","N8","N9","N10","F0","F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","W0","W1","W2","W3","W4","W5","W6","W7","W8","W9","W10","M0","M1","M2","M3","M4","M5","M6","M7","M8","M9","M10")
   
@@ -808,9 +829,10 @@ for(sce in general$namefolderoutput){
 ###ECONOMIC VARIABLES PLOTS
 ###
 ##################
-
+i=0
 for(sce in general$namefolderoutput){
-  if(calib) EconomicsPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  i=i+1
+  if(calib) EconomicsPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",general$namesimu[i],".dat",sep=""))
   if(!calib) EconomicsPertrip = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/loglike_",general$namesimu[[which(general$namefolderoutput==sce)]],".dat",sep=""))
   names(EconomicsPertrip)= c('TStepDep', 'TStep', 'reason_back','cumsteaming', 'idx_node',  'Id', 'VE_REF', 'timeatsea', 'fuelcons', 'traveled_dist',  paste('pop.', 0:(general$nbpops-1), sep=''), "freq_metiers", "revenue", "rev_from_av_prices", "rev_explicit_from_av_prices", "fuelcost", "vpuf", "gav", "gradva","sweptr", "revpersweptarea",  paste('disc_',  explicit_pops, sep=''), "GVA", "GVAPerRevenue", "LabourSurplus", "GrossProfit", "NetProfit",  "NetProfitMargin", "GVAPerFTE", "RoFTA", "BER", "CRBER", "NetPresentValue", "numTrips") 
   EconomicsPertrip = EconomicsPertrip %>% 
@@ -836,9 +858,10 @@ for(sce in general$namefolderoutput){
 ###ANNUAL INDICATORS
 ###
 ##################
-
+i=0
 for(sce in general$namefolderoutput){
-  if(calib) annualIndicators = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popdyn_annual_indic_",sce,length(general$namesimu[2][[1]]),".dat",sep=""))
+  i=i+1
+  if(calib)  annualIndicators = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popdyn_annual_indic_",general$namesimu[i],".dat",sep=""))
   if(!calib) annualIndicators = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popdyn_annual_indic_",general$namesimu[[which(general$namefolderoutput==sce)]],".dat",sep=""))
   colnames(annualIndicators)    <-  c("tstep", "stk", "multi", "multi2", "Fbar", "totland_kg", "totdisc_kg", "SSB_kg", "tac", paste0("N",0:10), paste0("F",0:10), paste0("W",0:10), paste0("M",0:10))
   annualIndicators = annualIndicators[,1:9] %>% 
@@ -863,12 +886,13 @@ for(sce in general$namefolderoutput){
 ###RTI MAPS
 ###
 ##################
-
+i=0
 for(sce in general$namefolderoutput){
+  i=i+1
   if(calib){
-    RTImaps = read_lines(paste(general$main.path,"/",general$case_study,"/",sce,"/popnodes_tariffs_",length(general$namesimu[2][[1]]),".dat",sep=""))
+    RTImaps = read_lines(paste(general$main.path,"/",general$case_study,"/",sce,"/popnodes_tariffs_",general$namesimu[i][[1]],".dat",sep=""))
     if(length(RTImaps)>0){
-      RTImaps = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popnodes_tariffs_",length(general$namesimu[2][[1]]),".dat",sep=""))
+      RTImaps = read.table(paste(general$main.path,"/",general$case_study,"/",sce,"/popnodes_tariffs_",general$namesimu[i][[1]],".dat",sep=""))
     }
   }
   if(!calib){
@@ -891,7 +915,8 @@ for(sce in general$namefolderoutput){
     RTIrectangle=setValues(icesquarterrectangle, icesNames)
     RTIrectangle=as.data.frame(RTIrectangle,xy=T)
     
-    if(calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",sce,length(general$namesimu[2][[1]]),"_out.db",sep=""))
+    
+    if(calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[i][[1]],"_out.db",sep=""))
     if(! calib) myConn <- dbConnect(drv = SQLite(), dbname= paste(general$main.path,"/",general$case_study,"/",sce,"/",general$case_study,"_",general$namesimu[[which(general$namefolderoutput==sce)]],"_out.db",sep=""))
     dbListTables(myConn)
     

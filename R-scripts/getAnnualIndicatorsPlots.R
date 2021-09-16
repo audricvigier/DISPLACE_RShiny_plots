@@ -106,6 +106,7 @@ indicatorsPlot = function(annualIndicatorsList, popVect,stockNames,scenames,face
       labs(x=paste("Indicator"),y="Value",colour="Scenario",shape="Scenario")
   }
   plot2return = plot2return +
+    scale_y_log10()+
     expand_limits(y=0)+
     theme_minimal()+
     theme(axis.title.y = element_text(angle=0,vjust=0.5),axis.text.x = element_text(angle=45,vjust=1,hjust=1))
