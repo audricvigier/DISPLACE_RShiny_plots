@@ -82,19 +82,19 @@ indicatorsPlot = function(annualIndicatorsList, popVect,stockNames,scenames,face
   
   if(facet=="pop"){
     plot2return = plot2return+
-      geom_point(size=2,aes(x=variable,y=ratios,colour=sce,shape=sce))+
+      geom_point(size=3,aes(x=variable,y=ratios,colour=sce,shape=sce))+
       facet_wrap(~spp,scales="free_y")+
       labs(x=paste("Indicator"),y="Value",colour="Scenario",shape="Scenario")
   }
   if(facet=="variable"){
     plot2return = plot2return+
-      geom_point(size=2,aes(x=spp,y=ratios,colour=sce,shape=sce))+
+      geom_point(size=3,aes(x=spp,y=ratios,colour=sce,shape=sce))+
       facet_wrap(~variable,scales="free_y")+
       labs(x=paste("Population"),y="Value",colour="Scenario",shape="Scenario")
   }
   if(facet=="scenario"){
     plot2return = plot2return+
-      geom_point(size=2,aes(x=variable,y=ratios,colour=spp,shape=spp))+
+      geom_point(size=3,aes(x=variable,y=ratios,colour=spp,shape=spp))+
       facet_wrap(~sce,scales="free_y")+
       labs(x=paste("Population"),y="Value",colour="Scenario",shape="Scenario")+
       scale_colour_manual(values=rep(scales::hue_pal()(5),6)[1:length(popVect)])+
@@ -102,14 +102,15 @@ indicatorsPlot = function(annualIndicatorsList, popVect,stockNames,scenames,face
   }
   if(facet=="no"){
     plot2return = plot2return+
-      geom_point(size=2,aes(x=variable,y=ratios,colour=sce,shape=sce))+
+      geom_point(size=3,aes(x=variable,y=ratios,colour=sce,shape=sce))+
       labs(x=paste("Indicator"),y="Value",colour="Scenario",shape="Scenario")
   }
   plot2return = plot2return +
+    geom_hline(yintercept=1,colour="black")+
     scale_y_log10()+
     expand_limits(y=0)+
     theme_minimal()+
-    theme(axis.title.y = element_text(angle=0,vjust=0.5),axis.text.x = element_text(angle=45,vjust=1,hjust=1))
+    theme(axis.title.y = element_text(angle=0,vjust=0.5),axis.text.x = element_text(angle=45,vjust=1,hjust=1),text=element_text (size=20))
   
   return(plot2return)
 }

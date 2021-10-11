@@ -29,7 +29,8 @@ general <- setGeneralOverallVariable (pathToRawInputs =file.path("D:/work/Displa
                                       # theScenarios= c("calib_multipliers_","calib_multipliers_SCE_"),
                                       # nbSimus=20,
                                       #theScenarios= paste("baseline",0:4,sep=""),
-                                      theScenarios= c("baseline0Selected","baseline1Selected"),
+                                      #theScenarios= c("baseline0Selected","baseline1Selected"),
+                                      theScenarios= c("baseline2","baseline3","baseline4"),
                                       nbSimus=1,
                                       useSQLite=FALSE)
 
@@ -53,7 +54,7 @@ source("R-scripts/responseCurvesSBBandF.R", local = TRUE)
 sbox <- shinydashboard::box
 outputLocation <- "D:/DISPLACE_outputs/CelticSea/data"
 ybeg=2010
-yend=2020
+yend=2012
 ## Find available RData files and pick out scenarios
 loglikefns <- dir(outputLocation, "loglike.*RData", full.names = TRUE)
 loglikefns = loglikefns[as.numeric(unlist(sapply(general$namefolderoutput, function(x) grep(x,loglikefns))))]
@@ -63,11 +64,13 @@ popdynfns = popdynfns[as.numeric(unlist(sapply(general$namefolderoutput, functio
 popdynscenarios <- unique(gsub("^.*popdyn_|[.]RData", "", popdynfns))
 # scenames=c("Multipliers","Multipliers SCE")
 # scenames=c("TAC","TAC + LO","Effort limitation","RTI no update","RTI with update")
-scenames=c("TAC","TAC + LO")
+#scenames=c("TAC","TAC + LO")
+scenames=c("Effort limitation","RTI no update","RTI with update")
 what2="weight"
 selected="_all_"
 # a_baseline="calib_multipliers_"
-a_baseline="baseline0Selected"
+#a_baseline="baseline0Selected"
+a_baseline="baseline2"
 
 getStockNames = function(){
   codes=read.table(file=paste(general$main.path.ibm, "/pop_names_CelticSea.txt",sep=""),header=T)
@@ -299,15 +302,15 @@ ui <- dashboardPage(
                    div("Fishing vessels of the Irish demersal fishing fleet are considered (DAFM, 2017; EC, 2017). "), collapsed = FALSE)),
       
       tabItem("map",
-              plotOutput("cumulativeMap", height = "1000px")
+              plotOutput("cumulativeMap", height = "800px")
       ),
       tabItem("ts",
               # fluidRow(
               #   sbox(width = 6, plotOutput("linePlot"), title = "", status = "primary", solidHeader = FALSE)
               # ))
-              plotOutput("linePlot", height = "1000px")),
+              plotOutput("linePlot", height = "800px",width="1200px")),
       tabItem("indicators",
-              plotOutput("indicatorPlot", height = "1000px"))
+              plotOutput("indicatorPlot", height = "800px",width="1200px"))
       # ,
       # tabItem("tab_plotlymap",
       #         plotlyOutput("cumulativeMaps"))

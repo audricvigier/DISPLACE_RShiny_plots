@@ -126,7 +126,7 @@ getFTimeSeries = function(FestimatesYear, fbar=TRUE){
         scale_shape_manual(name="Age", values=c(rep(c(15:16),each=5),17))+
         expand_limits(y=0)+
         theme_minimal()+
-        theme(axis.title.y = element_text(angle=0,vjust=0.5))
+        theme(axis.title.y = element_text(angle=0,vjust=0.5),text=element_text (size=20))
 		
 	plotList[[sce]]=as_grob(plotList[[sce]])
 	}
@@ -148,7 +148,7 @@ getFTimeSeries = function(FestimatesYear, fbar=TRUE){
         scale_shape_manual(name="Scenario", values=c(rep(c(15:16),each=5),17)[1:length(unique(FestimatesYear$scename))])+
         expand_limits(y=0)+
         theme_minimal()+
-        theme(axis.title.y = element_text(angle=0,vjust=0.5))
+        theme(axis.title.y = element_text(angle=0,vjust=0.5),text=element_text (size=20))
   }
   
   return(plot2return)

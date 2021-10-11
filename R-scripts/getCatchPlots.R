@@ -647,7 +647,7 @@ getExplicitCatchTimeSeries = function(data2plot=explicitCatch,aggScale="year",me
       facet_wrap(~PopId,scales="free_y")+
       labs(x=paste("Time step (",aggScale,")",sep=""),y="Catch\n(tons)",colour="Scenario",linetype="Fraction",shape="Fraction", title = paste("Explicit catch time series\n",unique(data2plot$metierId),sep=""))+
       theme_minimal()+
-      theme(axis.title.y = element_text(angle=0,vjust=0.5))
+      theme(axis.title.y = element_text(angle=0,vjust=0.5),text=element_text (size=20))
   }
   return(data2plot)
 }
@@ -684,7 +684,7 @@ getImplicitCatchTimeSeries = function(data2plot=implicitCatch,aggScale="year",po
     facet_wrap(~PopId,scales="free_y")+
     labs(x=paste("Time step (",aggScale,")",sep=""),y="Catch\n(tons)",colour="Scenario",linetype="Fraction",shape="Fraction", title ="Implicit catch time series")+
     theme_minimal()+
-    theme(axis.title.y = element_text(angle=0,vjust=0.5))
+    theme(axis.title.y = element_text(angle=0,vjust=0.5),text=element_text (size=20))
   return(data2plot)
 }
 
@@ -730,7 +730,7 @@ getAllCatchTimeSeries = function(dataexplicit=explicitCatch,dataimplicit=implici
     facet_wrap(~PopId,scales="free_y")+
     labs(x=paste("Time step (",aggScale,")",sep=""),y="Catch\n(tons)",colour="Scenario",linetype="Fraction",shape="Fraction", title ="Explicit + implicit catch time series")+
     theme_minimal()+
-    theme(axis.title.y = element_text(angle=0,vjust=0.5))
+    theme(axis.title.y = element_text(angle=0,vjust=0.5),text=element_text (size=20))
   return(data2plot)
 }
 

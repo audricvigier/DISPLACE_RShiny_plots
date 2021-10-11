@@ -120,7 +120,7 @@ getExplicitCPUETimeSeries = function(data2plot,aggScale="year",metierSel="All",p
       facet_wrap(~PopId,scales="free_y")+
       labs(x=paste("Time step (",aggScale,")",sep=""),y="CPUE\n(tons/h)",colour="Métier",linetype="Fraction",shape="Fraction", title = paste("Explicit CPUE time series\n",sce,sep=""))+
       theme_minimal()+
-      theme(axis.title.y = element_text(angle=0,vjust=0.5))
+      theme(axis.title.y = element_text(angle=0,vjust=0.5),text=element_text (size=20))
   }
   
   if(facet=="métier"){
@@ -139,7 +139,7 @@ getExplicitCPUETimeSeries = function(data2plot,aggScale="year",metierSel="All",p
       facet_wrap(~PopId,scales="free_y")+
       labs(x=paste("Time step (",aggScale,")",sep=""),y="CPUE\n(tons/h)",colour="Scenario",linetype="Fraction",shape="Fraction", title = paste("Explicit CPUE time series\n",unique(data2plot$metierId),sep=""))+
       theme_minimal()+
-      theme(axis.title.y = element_text(angle=0,vjust=0.5))  
+      theme(axis.title.y = element_text(angle=0,vjust=0.5),text=element_text (size=20))  
   }
   return(data2plot)
 }

@@ -334,7 +334,7 @@ getEffortTimeSeries <- function(effortPertrip,aggScale="month",metNum="All",ybeg
       scale_shape_manual(name="Scenario", values=c(rep(c(15:16),each=5),17)[1:length(unique(effortPertrip$scename))])+
       expand_limits(y=0)+
       theme_minimal()+
-      theme(axis.title.y = element_text(angle=0,vjust=0.5))
+      theme(axis.title.y = element_text(angle=0,vjust=0.5),text=element_text (size=20))
   
   return(plot2return)
 }

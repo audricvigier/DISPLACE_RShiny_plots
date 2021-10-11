@@ -302,7 +302,7 @@ getEconomicTimeSeries = function(data4plot,variable="revenue",cumulTime=T,metCho
     labs(x=paste("Time step (",aggScale,")",sep=""),y=legendY,colour="Scenario",linetype="Scenario",shape="Scenario", title = legendTitle)+
     expand_limits(y=0)+
     theme_minimal()+
-    theme(axis.title.y = element_text(angle=0,vjust=0.5))
+    theme(axis.title.y = element_text(angle=0,vjust=0.5),text=element_text (size=20))
   
   if(facet=="métier"){
     plot2return = plot2return + facet_wrap(~freq_metiers,scales="free_y")+

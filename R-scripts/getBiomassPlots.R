@@ -270,7 +270,7 @@ getNBSSBLengthBin = function(data2plot=biomassTimeSeries,aggScale="year",variabl
         scale_linetype_manual(values=rep(1:3,each=5)[1:14])+
         scale_shape_manual(values=rep(16:18,each=5)[1:14])+
         theme_minimal()+
-        theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
+        theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"),text=element_text (size=20))
     }
     
     if(colourVar=="TStep"){
@@ -293,7 +293,7 @@ getNBSSBLengthBin = function(data2plot=biomassTimeSeries,aggScale="year",variabl
         scale_linetype_manual(values=linetypes)+
         scale_shape_manual(values=shapes)+
         theme_minimal()+
-        theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
+        theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"),text=element_text (size=20))
     }
     
   return(plot2render)
@@ -342,7 +342,7 @@ getNBSSBTimeSeries = function(data2plot=biomassTimeSeries,aggScale="year",variab
       labs(x="Time step (month)",y=ylabel,colour="Scenario",linetype="Scenario",shape="Scenario")+
       expand_limits(y=0)+
       theme_minimal()+
-      theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"))
+      theme(axis.title.y=element_text(angle=0,vjust=0.5),strip.text=element_text(face="italic"),text=element_text (size=20))
   return(plot2return)
 }
 
